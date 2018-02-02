@@ -13,7 +13,7 @@ import (
 // The object keys corresponding the struct fields can be
 // specified in struct tag (not "rison" but) "json".
 func Unmarshal(data []byte, v interface{}, m Mode) error {
-	j, err := (&parser{Mode: m}).parse(data)
+	j, err := ToJSON(data, m)
 	if err != nil {
 		return err
 	}
@@ -26,19 +26,20 @@ func ToJSON(data []byte, m Mode) ([]byte, error) {
 	return (&parser{Mode: m}).parse(data)
 }
 
-type parser struct {
-	Mode            Mode
-	SkipWhitespaces bool
-	string          []byte
-	index           int
-	buffer          *bytes.Buffer
-}
-
 // Decode parses the Rison-encoded data and returns the
 // result as the tree of map[string]interface{}
 // (or []interface{} or scalar value).
-func Decode(r []byte, m Mode) (interface{}, error) {
-	return (&parser{Mode: m}).toMap(r)
+func Decode(data []byte, m Mode) (interface{}, error) {
+	j, err := ToJSON(data, m)
+	if err != nil {
+		return nil, err
+	}
+	var o interface{}
+	err = json.Unmarshal(j, &o)
+	if err != nil {
+		return nil, err
+	}
+	return o, nil
 }
 
 func substr(str []byte, o, n int) []byte {
@@ -61,6 +62,14 @@ func substr(str []byte, o, n int) []byte {
 		return []byte{}
 	}
 	return str[l:r]
+}
+
+type parser struct {
+	Mode            Mode
+	SkipWhitespaces bool
+	string          []byte
+	index           int
+	buffer          *bytes.Buffer
 }
 
 func (p *parser) error(offset int, format string, args ...interface{}) error {
@@ -90,19 +99,6 @@ func (p *parser) error(offset int, format string, args ...interface{}) error {
 		w = fmt.Sprintf(`the last character .. "%s" -> "%s"`, l, c)
 	}
 	return fmt.Errorf(`%s at %s`, fmt.Sprintf(format, args...), w)
-}
-
-func (p *parser) toMap(rison []byte) (interface{}, error) {
-	j, err := p.parse(rison)
-	if err != nil {
-		return nil, err
-	}
-	var o interface{}
-	err = json.Unmarshal(j, &o)
-	if err != nil {
-		return o, p.error(0, "invalid rison: %s", err.Error())
-	}
-	return o, nil
 }
 
 func (p *parser) parse(rison []byte) ([]byte, error) {
