@@ -8,9 +8,13 @@ import (
 )
 
 func ExampleDecode() {
-	v, _ := Decode([]byte(`(id:example,str:'string',num:100,yes:!t,nil:!n,arr:!(1,2,3))`))
+	r := "(id:example,str:'string',num:100,yes:!t,nil:!n,arr:!(1,2,3))"
+	v, _ := Decode([]byte(r), Mode_Rison)
 	m := v.(map[string]interface{})
-	fmt.Printf("id:%v, str:%v, num:%v, yes:%v, nil:%v, arr:%v", m["id"], m["str"], m["num"], m["yes"], m["nil"], m["arr"])
+	fmt.Printf(
+		"id:%v, str:%v, num:%v, yes:%v, nil:%v, arr:%v",
+		m["id"], m["str"], m["num"], m["yes"], m["nil"], m["arr"],
+	)
 	// Output: id:example, str:string, num:100, yes:true, nil:<nil>, arr:[1 2 3]
 }
 
@@ -24,13 +28,15 @@ func ExampleUnmarshal() {
 		A []int64     `json:"a"`
 		X interface{} `json:"x"`
 	}
-	_ = Unmarshal([]byte("(i:1,f:2.3,s:str,b:!t,a:!(7,8,9),x:(y:Y))"), &v)
+	r := "(i:1,f:2.3,s:str,b:!t,a:!(7,8,9),x:(y:Y))"
+	_ = Unmarshal([]byte(r), &v, Mode_Rison)
 	fmt.Printf("%+v\n", v)
 	// Output: {I:1 F:2.3 S:str B:true P:<nil> A:[7 8 9] X:map[y:Y]}
 }
 
 func ExampleToJSON() {
-	j, _ := ToJSON([]byte("!(1,2.3,str,'ing',true,nil,(a:b),!(7,8,9))"))
+	r := "!(1,2.3,str,'ing',true,nil,(a:b),!(7,8,9))"
+	j, _ := ToJSON([]byte(r), Mode_Rison)
 	fmt.Printf("%s\n", string(j))
 	// Output: [1,2.3,"str","ing","true","nil",{"a":"b"},[7,8,9]]
 }
@@ -165,7 +171,7 @@ func TestDecode(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		decoded, err := Decode([]byte(r))
+		decoded, err := Decode([]byte(r), Mode_Rison)
 		if err != nil {
 			t.Errorf("decoding %s : want %s, got error `%s`", r, j, err.Error())
 		} else if !reflect.DeepEqual(object, decoded) {
@@ -182,7 +188,7 @@ func TestDecodeObject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoded, err := DecodeObject([]byte(r))
+	decoded, err := Decode([]byte(r), Mode_ORison)
 	if err != nil {
 		t.Errorf("decoding %s : want %s, got error `%s`", r, j, err.Error())
 	} else if !reflect.DeepEqual(object, decoded) {
@@ -198,7 +204,7 @@ func TestDecodeArray(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoded, err := DecodeArray([]byte(r))
+	decoded, err := Decode([]byte(r), Mode_ARison)
 	if err != nil {
 		t.Errorf("decoding %s : want %s, got error `%s`", r, j, err.Error())
 	} else if !reflect.DeepEqual(object, decoded) {
@@ -214,7 +220,7 @@ func TestDecodeDeepNestedObject(t *testing.T) {
 		r += ",c:3)"
 	}
 	l += "2"
-	_, err := Decode([]byte(l + r))
+	_, err := Decode([]byte(l+r), Mode_Rison)
 	if err != nil {
 		t.Errorf("decoding %s .. : want no error, got error `%s`", l[:100], err.Error())
 	}
@@ -228,7 +234,7 @@ func TestDecodeDeepNestedArray(t *testing.T) {
 		r += ",!())"
 	}
 	l += "!()"
-	_, err := Decode([]byte(l + r))
+	_, err := Decode([]byte(l+r), Mode_Rison)
 	if err != nil {
 		t.Errorf("decoding %s .. : want no error, got error `%s`", l[:100], err.Error())
 	}
@@ -236,7 +242,7 @@ func TestDecodeDeepNestedArray(t *testing.T) {
 
 func TestDecodeErrors(t *testing.T) {
 	for _, r := range invalidCases {
-		decoded, err := Decode([]byte(r))
+		decoded, err := Decode([]byte(r), Mode_Rison)
 		if err == nil {
 			t.Errorf("decoding %s : want an error, got %s", r, dumpValue(decoded))
 		}

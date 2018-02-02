@@ -7,71 +7,80 @@ import (
 	"strings"
 )
 
-const (
-	NOT_IDCHAR        = ` '!:(),*@$`
-	NOT_IDSTART       = NOT_IDCHAR + `0123456789-`
-	PARSER_WHITESPACE = " \t\n\r\f"
-)
-
-func Unmarshal(data []byte, v interface{}) error {
-	j, err := (&parser{}).parse(data)
+// Unmarshal parses the Rison-encoded data and stores the result
+// in the value pointed to by v.
+//
+// The object keys corresponding the struct fields can be
+// specified in struct tag (not "rison" but) "json".
+func Unmarshal(data []byte, v interface{}, m Mode) error {
+	j, err := (&parser{Mode: m}).parse(data)
 	if err != nil {
 		return err
 	}
 	return json.Unmarshal(j, v)
 }
 
-func ToJSON(data []byte) ([]byte, error) {
-	return (&parser{}).parse(data)
+// ToJSON parses the Rison-encoded data and returns the
+// JSON-encoded data that expresses the equal value.
+func ToJSON(data []byte, m Mode) ([]byte, error) {
+	return (&parser{Mode: m}).parse(data)
 }
 
 type parser struct {
+	Mode            Mode
 	SkipWhitespaces bool
 	string          []byte
 	index           int
 	buffer          *bytes.Buffer
 }
 
-func Decode(r []byte) (interface{}, error) {
-	return (&parser{}).toMap(r)
+// Decode parses the Rison-encoded data and returns the
+// result as the tree of map[string]interface{}
+// (or []interface{} or scalar value).
+func Decode(r []byte, m Mode) (interface{}, error) {
+	return (&parser{Mode: m}).toMap(r)
 }
 
-func DecodeObject(r []byte) (interface{}, error) {
-	r = append([]byte{'('}, r...)
-	r = append(r, ')')
-	return (&parser{}).toMap(r)
-}
-
-func DecodeArray(r []byte) (interface{}, error) {
-	r = append([]byte{'!', '('}, r...)
-	r = append(r, ')')
-	return (&parser{}).toMap(r)
-}
-
-func (p *parser) substr(o, n int) string {
-	s := len(p.string)
+func substr(str []byte, o, n int) []byte {
+	s := len(str)
 	if s == 0 {
-		return ""
+		return []byte{}
 	}
 	l := o
 	if l < 0 {
 		l = 0
 	}
 	r := o + n
+	if n < 0 {
+		r = s + n
+	}
 	if s < r {
 		r = s
 	}
-	return string(p.string[l:r])
+	if r <= l {
+		return []byte{}
+	}
+	return str[l:r]
 }
 
 func (p *parser) error(offset int, format string, args ...interface{}) error {
+	i := p.index
+	s := p.string
+	switch p.Mode {
+	case Mode_ORison:
+		s = substr(s, 1, -1)
+		i--
+	case Mode_ARison:
+		s = substr(s, 2, -1)
+		i -= 2
+	}
 	o := offset
 	if o < 0 {
-		o = p.index + offset
+		o = i + offset
 	}
-	l := p.substr(o-5, 5)
-	c := p.substr(o, 1)
-	r := p.substr(o+1, 5)
+	l := string(substr(s, o-5, 5))
+	c := string(substr(s, o, 1))
+	r := string(substr(s, o+1, 5))
 	w := fmt.Sprintf(`%d near .. "%s" -> "%s" -> "%s" ..`, o, l, c, r)
 	if l == "" {
 		w = fmt.Sprintf(`the first character "%s" -> "%s" ..`, c, r)
@@ -97,6 +106,14 @@ func (p *parser) toMap(rison []byte) (interface{}, error) {
 }
 
 func (p *parser) parse(rison []byte) ([]byte, error) {
+	switch p.Mode {
+	case Mode_ORison:
+		rison = append([]byte{'('}, rison...)
+		rison = append(rison, ')')
+	case Mode_ARison:
+		rison = append([]byte{'!', '('}, rison...)
+		rison = append(rison, ')')
+	}
 	p.string = rison
 	p.index = 0
 	p.buffer = bytes.NewBuffer(make([]byte, 0, len(rison)))
@@ -150,7 +167,7 @@ func (p *parser) parseId() (bool, error) {
 		return false, nil
 	}
 	c := s[i]
-	if 0 <= strings.IndexByte(NOT_IDSTART, c) {
+	if 0 <= strings.IndexByte(notIdStart, c) {
 		return false, nil
 	}
 	i++
@@ -160,7 +177,7 @@ func (p *parser) parseId() (bool, error) {
 			break
 		}
 		c := s[i]
-		if 0 <= strings.IndexByte(NOT_IDCHAR, c) {
+		if 0 <= strings.IndexByte(notIdChar, c) {
 			break
 		}
 		i++
@@ -382,7 +399,7 @@ func (p *parser) next() (byte, bool) {
 	for p.index < len(p.string) {
 		c := p.string[p.index]
 		p.index++
-		if !p.SkipWhitespaces || strings.IndexByte(PARSER_WHITESPACE, c) < 0 {
+		if !p.SkipWhitespaces || strings.IndexByte(parserWhitespace, c) < 0 {
 			return c, true
 		}
 	}
