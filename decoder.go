@@ -17,22 +17,23 @@ type parser struct {
 	SkipWhitespaces bool
 	string          []byte
 	index           int
+	buffer          *bytes.Buffer
 }
 
 func Decode(r []byte) (interface{}, error) {
-	return (&parser{}).parse(r)
+	return (&parser{}).toMap(r)
 }
 
 func DecodeObject(r []byte) (interface{}, error) {
 	r = append([]byte{'('}, r...)
 	r = append(r, ')')
-	return (&parser{}).parse(r)
+	return (&parser{}).toMap(r)
 }
 
 func DecodeArray(r []byte) (interface{}, error) {
 	r = append([]byte{'!', '('}, r...)
 	r = append(r, ')')
-	return (&parser{}).parse(r)
+	return (&parser{}).toMap(r)
 }
 
 func (p *parser) substr(o, n int) string {
@@ -70,23 +71,39 @@ func (p *parser) error(offset int, format string, args ...interface{}) error {
 	return fmt.Errorf(`%s at %s`, fmt.Sprintf(format, args...), w)
 }
 
-func (p *parser) parse(str []byte) (interface{}, error) {
-	p.string = str
-	p.index = 0
-	value, err := p.readValue()
+func (p *parser) toMap(rison []byte) (interface{}, error) {
+	j, err := p.toJson(rison)
 	if err != nil {
 		return nil, err
 	}
-	if p.index < len(p.string) {
-		return value, p.error(0, `extra character "%c" after top-level value`, p.string[p.index])
+	var o interface{}
+	err = json.Unmarshal(j, &o)
+	if err != nil {
+		return o, p.error(0, "invalid rison: %s", err.Error())
 	}
-	return value, nil
+	return o, nil
 }
 
-func (p *parser) readValue() (interface{}, error) {
+func (p *parser) toJson(rison []byte) ([]byte, error) {
+	p.string = rison
+	p.index = 0
+	p.buffer = bytes.NewBuffer(make([]byte, 0, len(rison)))
+	err := p.readValue()
+	if err != nil {
+		return nil, err
+	}
+	j := p.buffer.Bytes()
+	p.buffer = nil
+	if p.index < len(p.string) {
+		return j, p.error(0, `extra character "%c" after top-level value`, p.string[p.index])
+	}
+	return j, nil
+}
+
+func (p *parser) readValue() error {
 	c, ok := p.next()
 	if !ok {
-		return nil, p.error(0, `empty expression`)
+		return p.error(0, `empty expression`)
 	}
 
 	switch {
@@ -100,139 +117,153 @@ func (p *parser) readValue() (interface{}, error) {
 		return p.parseNumber()
 	}
 
-	// fell through table, parse as an id
-
 	p.index--
 
-	id, ok := p.parseId()
+	ok, err := p.parseId()
+	if err != nil {
+		return err
+	}
 	if ok {
-		return string(id), nil
+		return nil
 	}
 
-	return nil, p.error(0, `invalid character: "%c"`, c)
+	return p.error(0, `invalid character: "%c"`, c)
 }
 
-func (p *parser) parseId() ([]byte, bool) {
+func (p *parser) parseId() (bool, error) {
 	s := p.string
 	n := len(s)
-	if n <= p.index {
-		return nil, false
+	i := p.index
+	if n <= i {
+		return false, nil
 	}
-	c := s[p.index]
+	c := s[i]
 	if 0 <= strings.IndexByte(NOT_IDSTART, c) {
-		return nil, false
+		return false, nil
 	}
-	p.index++
+	i++
 	id := []byte{c}
 	for {
-		if n <= p.index {
+		if n <= i {
 			break
 		}
-		c := s[p.index]
+		c := s[i]
 		if 0 <= strings.IndexByte(NOT_IDCHAR, c) {
 			break
 		}
-		p.index++
+		i++
 		id = append(id, c)
 	}
-	return id, true
+	j, err := json.Marshal(string(id))
+	if err != nil {
+		return false, p.error(-1, `invalid id "%s": %s`, string(id), err.Error())
+	}
+	p.index = i
+	p.buffer.Write(j)
+	return true, nil
 }
 
-func (p *parser) parseSpecial() (interface{}, error) {
+func (p *parser) parseSpecial() error {
 	s := p.string
 	if len(s) <= p.index {
-		return nil, p.error(-1, `"!" at end of input`)
+		return p.error(-1, `"!" at end of input`)
 	}
 	c := s[p.index]
 	p.index++
 	switch c {
 	case 't':
-		return true, nil
+		p.buffer.WriteString("true")
+		return nil
 	case 'f':
-		return false, nil
+		p.buffer.WriteString("false")
+		return nil
 	case 'n':
-		return nil, nil
+		p.buffer.WriteString("null")
+		return nil
 	case '(':
 		return p.parseArray()
 	}
-	return nil, p.error(-1, `unknown literal: "!%c"`, c)
+	return p.error(-1, `unknown literal: "!%c"`, c)
 }
 
-func (p *parser) parseArray() (interface{}, error) {
-	ar := []interface{}{}
+func (p *parser) parseArray() error {
+	notFirst := false
+	p.buffer.WriteByte('[')
 	for {
 		c, ok := p.next()
 		if !ok {
-			return nil, p.error(0, `unmatched "!("`)
+			return p.error(0, `unmatched "!("`)
 		}
 		if c == ')' {
 			break
 		}
-		if 0 < len(ar) {
+		if notFirst {
 			if c != ',' {
-				return nil, p.error(-1, `missing ","`)
+				return p.error(-1, `missing ","`)
 			}
+			p.buffer.WriteByte(',')
 		} else if c == ',' {
-			return nil, p.error(-1, `extra ","`)
+			return p.error(-1, `extra ","`)
 		} else {
 			p.index--
 		}
-		v, err := p.readValue()
+		err := p.readValue()
 		if err != nil {
-			return nil, err
+			return err
 		}
-		ar = append(ar, v)
+		notFirst = true
 	}
-	return ar, nil
+	p.buffer.WriteByte(']')
+	return nil
 }
 
-func (p *parser) parseObject() (interface{}, error) {
-	o := map[string]interface{}{}
+func (p *parser) parseObject() error {
+	notFirst := false
+	p.buffer.WriteByte('{')
 	for {
 		c, ok := p.next()
 		if !ok {
-			return nil, p.error(0, `unmatched "("`)
+			return p.error(0, `unmatched "("`)
 		}
 		if c == ')' {
 			break
 		}
-		if 0 < len(o) {
+		if notFirst {
 			if c != ',' {
-				return nil, p.error(-1, `missing ","`)
+				return p.error(-1, `missing ","`)
 			}
+			p.buffer.WriteByte(',')
 		} else if c == ',' {
-			return nil, p.error(-1, `extra ","`)
+			return p.error(-1, `extra ","`)
 		} else {
 			p.index--
 		}
-		k, err := p.readValue()
+		err := p.readValue() // @todo must be a string
 		if err != nil {
-			return nil, err
-		}
-		ks, ok := k.(string)
-		if !ok {
-			return nil, p.error(-1, `object key must be a string`)
+			return err
 		}
 		if c, ok := p.next(); !(ok && c == ':') {
-			return nil, p.error(-1, `missing ":"`)
+			return p.error(-1, `missing ":"`)
 		}
-		v, err := p.readValue()
+		p.buffer.WriteByte(':')
+		err = p.readValue()
 		if err != nil {
-			return nil, err
+			return err
 		}
-		o[ks] = v
+		notFirst = true
 	}
-	return o, nil
+	p.buffer.WriteByte('}')
+	return nil
 }
 
-func (p *parser) parseQuotedString() (interface{}, error) {
+func (p *parser) parseQuotedString() error {
 	s := p.string
 	i := p.index
 	start := i
 	result := []byte{}
 	for {
 		if len(s) <= i {
-			return nil, p.error(0, `unmatched "'"`)
+			return p.error(0, `unmatched "'"`)
 		}
 		c := s[i]
 		i++
@@ -248,7 +279,7 @@ func (p *parser) parseQuotedString() (interface{}, error) {
 			if c == '!' || c == '\'' {
 				result = append(result, c)
 			} else {
-				return nil, p.error(-1, `invalid string escape: "!%c"`, c)
+				return p.error(-1, `invalid string escape: "!%c"`, c)
 			}
 			start = i
 		}
@@ -257,25 +288,30 @@ func (p *parser) parseQuotedString() (interface{}, error) {
 		result = append(result, s[start:i-1]...)
 	}
 	p.index = i
-	return string(result), nil
+	j, err := json.Marshal(string(result))
+	if err != nil {
+		return p.error(-1, `invalid string "%s": %s`, string(result), err.Error())
+	}
+	p.buffer.Write(j)
+	return nil
 }
 
-type numberParserState int
+type parseNumberState int
 
 const (
-	numberParserState_end numberParserState = iota
-	numberParserState_int
-	numberParserState_frac
-	numberParserState_exp
+	parseNumberState_end parseNumberState = iota
+	parseNumberState_int
+	parseNumberState_frac
+	parseNumberState_exp
 )
 
-func (p *parser) parseNumber() (interface{}, error) {
+func (p *parser) parseNumber() error {
 	s := p.string
 	i := p.index
 	start := i - 1
-	state := numberParserState_int
+	state := parseNumberState_int
 	permittedSigns := []byte{'-'}
-	for state != numberParserState_end {
+	for state != parseNumberState_end {
 		if len(s) <= i {
 			i++
 			break
@@ -290,38 +326,43 @@ func (p *parser) parseNumber() (interface{}, error) {
 			continue
 		}
 		switch state {
-		case numberParserState_int:
+		case parseNumberState_int:
 			if c == '.' {
-				state = numberParserState_frac
+				state = parseNumberState_frac
 			} else if c == 'e' {
-				state = numberParserState_exp
+				state = parseNumberState_exp
 				permittedSigns = []byte{'-'}
 			} else {
-				state = numberParserState_end
+				state = parseNumberState_end
 			}
-		case numberParserState_frac:
+		case parseNumberState_frac:
 			if c == 'e' {
-				state = numberParserState_exp
+				state = parseNumberState_exp
 				permittedSigns = []byte{'-'}
 			} else {
-				state = numberParserState_end
+				state = parseNumberState_end
 			}
 		default:
-			state = numberParserState_end
+			state = parseNumberState_end
 		}
 	}
 	i--
 	p.index = i
 	t := s[start:i]
 	if string(t) == "-" {
-		return nil, p.error(-1, `invalid number`)
+		return p.error(-1, `invalid number`)
 	}
 	var result interface{}
 	err := json.Unmarshal(t, &result)
 	if err != nil {
-		return nil, p.error(-1, `invalid number "%s"`, string(t))
+		return p.error(-1, `invalid number "%s": %s`, string(t), err.Error())
 	}
-	return result, nil
+	j, err := json.Marshal(result)
+	if err != nil {
+		return p.error(-1, `invalid number "%s": %s`, string(t), err.Error())
+	}
+	p.buffer.Write(j)
+	return nil
 }
 
 // return the next non-whitespace character
