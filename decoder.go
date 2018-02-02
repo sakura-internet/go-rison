@@ -4,17 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 )
 
 const (
 	NOT_IDCHAR        = ` '!:(),*@$`
-	IDRX              = `[^` + NOT_IDCHAR + `0-9-][^` + NOT_IDCHAR + `]*`
+	NOT_IDSTART       = NOT_IDCHAR + `0123456789-`
 	PARSER_WHITESPACE = " \t\n\r\f"
 )
-
-var nextId = regexp.MustCompile(`^` + IDRX)
 
 type parser struct {
 	SkipWhitespaces bool
@@ -105,17 +102,40 @@ func (p *parser) readValue() (interface{}, error) {
 
 	// fell through table, parse as an id
 
-	s := p.string
-	i := p.index - 1
+	p.index--
 
-	m := nextId.FindSubmatch(s[i:])
-	if 0 < len(m) {
-		id := m[0]
-		p.index = i + len(id)
+	id, ok := p.parseId()
+	if ok {
 		return string(id), nil
 	}
 
-	return nil, p.error(-1, `invalid character: "%c"`, c)
+	return nil, p.error(0, `invalid character: "%c"`, c)
+}
+
+func (p *parser) parseId() ([]byte, bool) {
+	s := p.string
+	n := len(s)
+	if n <= p.index {
+		return nil, false
+	}
+	c := s[p.index]
+	if 0 <= strings.IndexByte(NOT_IDSTART, c) {
+		return nil, false
+	}
+	p.index++
+	id := []byte{c}
+	for {
+		if n <= p.index {
+			break
+		}
+		c := s[p.index]
+		if 0 <= strings.IndexByte(NOT_IDCHAR, c) {
+			break
+		}
+		p.index++
+		id = append(id, c)
+	}
+	return id, true
 }
 
 func (p *parser) parseSpecial() (interface{}, error) {
