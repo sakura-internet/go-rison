@@ -13,6 +13,18 @@ const (
 	PARSER_WHITESPACE = " \t\n\r\f"
 )
 
+func Unmarshal(data []byte, v interface{}) error {
+	j, err := (&parser{}).parse(data)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(j, v)
+}
+
+func ToJSON(data []byte) ([]byte, error) {
+	return (&parser{}).parse(data)
+}
+
 type parser struct {
 	SkipWhitespaces bool
 	string          []byte
@@ -72,7 +84,7 @@ func (p *parser) error(offset int, format string, args ...interface{}) error {
 }
 
 func (p *parser) toMap(rison []byte) (interface{}, error) {
-	j, err := p.toJson(rison)
+	j, err := p.parse(rison)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +96,7 @@ func (p *parser) toMap(rison []byte) (interface{}, error) {
 	return o, nil
 }
 
-func (p *parser) toJson(rison []byte) ([]byte, error) {
+func (p *parser) parse(rison []byte) ([]byte, error) {
 	p.string = rison
 	p.index = 0
 	p.buffer = bytes.NewBuffer(make([]byte, 0, len(rison)))
