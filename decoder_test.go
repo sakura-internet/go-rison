@@ -14,6 +14,27 @@ func ExampleDecode() {
 	// Output: id:example, str:string, num:100, yes:true, nil:<nil>, arr:[1 2 3]
 }
 
+func ExampleUnmarshal() {
+	var v struct {
+		I int64       `json:"i"`
+		F float64     `json:"f"`
+		S string      `json:"s"`
+		B bool        `json:"b"`
+		P *bool       `json:"p"`
+		A []int64     `json:"a"`
+		X interface{} `json:"x"`
+	}
+	_ = Unmarshal([]byte("(i:1,f:2.3,s:str,b:!t,a:!(7,8,9),x:(y:Y))"), &v)
+	fmt.Printf("%+v\n", v)
+	// Output: {I:1 F:2.3 S:str B:true P:<nil> A:[7 8 9] X:map[y:Y]}
+}
+
+func ExampleToJSON() {
+	j, _ := ToJSON([]byte("!(1,2.3,str,'ing',true,nil,(a:b),!(7,8,9))"))
+	fmt.Printf("%s\n", string(j))
+	// Output: [1,2.3,"str","ing","true","nil",{"a":"b"},[7,8,9]]
+}
+
 var testCases = map[string]string{
 
 	// quoted strings
@@ -219,48 +240,5 @@ func TestDecodeErrors(t *testing.T) {
 		if err == nil {
 			t.Errorf("decoding %s : want an error, got %s", r, dumpValue(decoded))
 		}
-	}
-}
-
-type testUnmarshalType struct {
-	I int64       `json:"i"`
-	F float64     `json:"f"`
-	S string      `json:"s"`
-	B bool        `json:"b"`
-	P *bool       `json:"p"`
-	A []int64     `json:"a"`
-	X interface{} `json:"x"`
-}
-
-func TestUnmarshal(t *testing.T) {
-	object := testUnmarshalType{
-		I: 1,
-		F: 2.3,
-		S: "str",
-		B: true,
-		P: nil,
-		A: []int64{7, 8, 9},
-		X: map[string]interface{}{"y": "Y", "z": "Z"},
-	}
-	rison := "(i:1,f:2.3,s:str,b:!t,a:!(7,8,9),x:(y:Y,z:Z))"
-	unmarshaled := testUnmarshalType{}
-	err := Unmarshal([]byte(rison), &unmarshaled)
-	if err != nil {
-		t.Errorf("unmarshaling %s : want %+v, got error `%s`", rison, object, err.Error())
-	}
-	if !reflect.DeepEqual(object, unmarshaled) {
-		t.Errorf("unmarshaling %s : want %+v, got %+v", rison, object, unmarshaled)
-	}
-}
-
-func TestToJSON(t *testing.T) {
-	rison := "!(1,2.3,str,'ing',true,nil,(a:b),!(7,8,9))"
-	want := `[1,2.3,"str","ing","true","nil",{"a":"b"},[7,8,9]]`
-	j, err := ToJSON([]byte(rison))
-	if err != nil {
-		t.Errorf("converting %s to json : want %s, got error `%s`", rison, want, err.Error())
-	}
-	if want != string(j) {
-		t.Errorf("converting %s to json : want %s, got %s", rison, want, string(j))
 	}
 }
