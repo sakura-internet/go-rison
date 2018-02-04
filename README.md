@@ -2,12 +2,46 @@
 
 Go port of [Rison](https://github.com/Nanonid/rison).
 
-Rison is a data serialization format optimized for compactness in URIs.
+> This page describes _Rison_, a data serialization format optimized for
+> compactness in URIs. Rison is a slight variation of JSON that looks vastly
+> superior after URI encoding. Rison still expresses exactly the same set of
+> data structures as JSON, so data can be translated back and forth without loss
+> or guesswork.
 
-> Rison is a slight variation of JSON that looks vastly
-> superior after URI encoding. Rison still expresses exactly the
-> same set of data structures as JSON, so data can be translated
-> back and forth without loss or guesswork.
+### Differences from JSON syntax
+
+>   * no whitespace is permitted except inside quoted strings. 
+>   * almost all character escaping is left to the uri encoder. 
+>   * single-quotes are used for quoting, but quotes can and should be left off strings when the strings are simple identifiers. 
+>   * the `e+` exponent format is forbidden, since `+` is not safe in form values and the plain `e` format is equivalent. 
+>   * the `E`, `E+`, and `E` exponent formats are removed. 
+>   * object keys should be lexically sorted when encoding. the intent is to improve url cacheability. 
+>   * uri-safe tokens are used in place of the standard json tokens: 
+>
+> rison token json token  meaning
+>
+> * `'` `"` string quote
+> * `!` `\` string escape
+> * `(...)` `{...}` object
+> * `!(...)` `[...]` array
+>
+> * the JSON literals that look like identifiers (`true`, `false` and `null`) are represented as `!` sequences: 
+>
+> rison token json token
+>
+> * `!t` true
+> * `!f` false
+> * `!n` null
+>
+> The `!` character plays two similar but different roles, as an escape
+> character within strings, and as a marker for special values. This may be
+> confusing.
+>
+> Notice that services can distinguish Rison-encoded strings from JSON-encoded
+> strings by checking the first character. Rison structures start with `(` or
+> `!(`. JSON structures start with `[` or `{`. This means that a service which
+> expects a JSON encoded object or array can accept Rison-encoded objects
+> without loss of compatibility.
 
 ### Examples
 
