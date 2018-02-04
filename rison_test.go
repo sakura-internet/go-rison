@@ -48,11 +48,13 @@ var testCases = map[string]string{
 	"(a:0)":                         `{"a":0}`,
 	"(a:0,b:1)":                     `{"a":0,"b":1}`,
 	"(a:0,b:foo,c:'23skidoo')":      `{"a":0,"b":"foo","c":"23skidoo"}`,
+	"(a:!n)":                        `{"a":null}`,
 	"(id:!n,type:/common/document)": `{"id":null,"type":"/common/document"}`,
 	`(any:json,yes:!t)`:             `{"any":"json","yes":true}`,
 
 	// arrays
 	"!()":            `[]`,
+	"!(!n)":          `[null]`,
 	"!(1,2,3)":       `[1,2,3]`,
 	"!(foo,bar)":     `["foo","bar"]`,
 	"!(!t,!f,!n,'')": `[true,false,null,""]`,
@@ -66,6 +68,7 @@ var testCases = map[string]string{
 	"'Control-F: \u0006'": `"Control-F: \u0006"`,
 	"'Unicode: ௫'":        `"Unicode: ௫"`,
 	"(花:上野,柳:銀座,月:隅田)":    `{"花":"上野","柳":"銀座","月":"隅田"}`,
+	"(🍣:🐟,🍛:🌶,🍔:🐂)":       `{"🍣":"🐟","🍛":"🌶","🍔":"🐂"}`,
 }
 
 var invalidCases = []string{
@@ -141,81 +144,41 @@ func TestDecodeEncode(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		decoded, err := Decode([]byte(r), Mode_Rison)
-		if err != nil {
-			t.Errorf("decoding %s : want %s, got error `%s`", r, j, err.Error())
-		} else if !reflect.DeepEqual(object, decoded) {
-			t.Errorf("decoding %s : want %s, got %s", r, j, dumpValue(decoded))
+		modes := []Mode{Mode_Rison}
+		n := len(r)
+		if 3 <= n && r[0] == '(' && r[n-1] == ')' {
+			modes = append(modes, Mode_ORison)
+		}
+		if 4 <= n && r[0] == '!' && r[1] == '(' && r[n-1] == ')' {
+			modes = append(modes, Mode_ARison)
 		}
 
-		encoded, err := Encode(object, Mode_Rison)
-		if err != nil {
-			t.Errorf("encoding %s : want %s, got error `%s`", j, r, err.Error())
-		} else {
-			redecoded, err := Decode(encoded, Mode_Rison)
-			if err != nil {
-				t.Errorf("encoding %s : want %s, got %s and error `%s`", j, r, string(encoded), err.Error())
-			} else if !reflect.DeepEqual(object, redecoded) {
-				t.Errorf("encoding %s : want %s, got %s", j, r, string(encoded))
+		for _, m := range modes {
+			r2 := r
+			switch m {
+			case Mode_ORison:
+				r2 = r[1 : n-1]
+			case Mode_ARison:
+				r2 = r[2 : n-1]
 			}
-		}
-	}
-}
+			decoded, err := Decode([]byte(r2), m)
+			if err != nil {
+				t.Errorf("decoding %s : want %s, got error `%s`", r2, j, err.Error())
+			} else if !reflect.DeepEqual(object, decoded) {
+				t.Errorf("decoding %s : want %s, got %s", r2, j, dumpValue(decoded))
+			}
 
-func TestDecodeEncodeORison(t *testing.T) {
-	r := `a:1,b:!f`
-	j := `{"a":1,"b":false}`
-	var object interface{}
-	err := json.Unmarshal([]byte(j), &object)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	decoded, err := Decode([]byte(r), Mode_ORison)
-	if err != nil {
-		t.Errorf("decoding %s : want %s, got error `%s`", r, j, err.Error())
-	} else if !reflect.DeepEqual(object, decoded) {
-		t.Errorf("decoding %s : want %s, got %s", r, j, dumpValue(decoded))
-	}
-
-	encoded, err := Encode(object, Mode_ORison)
-	if err != nil {
-		t.Errorf("encoding %s : want %s, got error `%s`", j, r, err.Error())
-	} else {
-		redecoded, err := Decode(encoded, Mode_ORison)
-		if err != nil {
-			t.Errorf("encoding %s : want %s, got %s and error `%s`", j, r, string(encoded), err.Error())
-		} else if !reflect.DeepEqual(object, redecoded) {
-			t.Errorf("encoding %s : want %s, got %s", j, r, string(encoded))
-		}
-	}
-}
-
-func TestDecodeARison(t *testing.T) {
-	r := `a,2,!t`
-	j := `["a",2,true]`
-	var object interface{}
-	err := json.Unmarshal([]byte(j), &object)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	decoded, err := Decode([]byte(r), Mode_ARison)
-	if err != nil {
-		t.Errorf("decoding %s : want %s, got error `%s`", r, j, err.Error())
-	} else if !reflect.DeepEqual(object, decoded) {
-		t.Errorf("decoding %s : want %s, got %s", r, j, dumpValue(decoded))
-	}
-
-	encoded, err := Encode(object, Mode_ARison)
-	if err != nil {
-		t.Errorf("encoding %s : want %s, got error `%s`", j, r, err.Error())
-	} else {
-		redecoded, err := Decode(encoded, Mode_ARison)
-		if err != nil {
-			t.Errorf("encoding %s : want %s, got %s and error `%s`", j, r, string(encoded), err.Error())
-		} else if !reflect.DeepEqual(object, redecoded) {
-			t.Errorf("encoding %s : want %s, got %s", j, r, string(encoded))
+			encoded, err := Encode(object, m)
+			if err != nil {
+				t.Errorf("encoding %s : want %s, got error `%s`", j, r2, err.Error())
+			} else {
+				redecoded, err := Decode(encoded, m)
+				if err != nil {
+					t.Errorf("encoding %s : want %s, got %s and error `%s`", j, r2, string(encoded), err.Error())
+				} else if !reflect.DeepEqual(object, redecoded) {
+					t.Errorf("encoding %s : want %s, got %s", j, r2, string(encoded))
+				}
+			}
 		}
 	}
 }
