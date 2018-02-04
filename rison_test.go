@@ -71,7 +71,7 @@ var testCases = map[string]string{
 	"(🍣:🐟,🍛:🌶,🍔:🐂)":       `{"🍣":"🐟","🍛":"🌶","🍔":"🐂"}`,
 }
 
-var invalidCases = []string{
+var invalidDecodeCases = []interface{}{
 
 	// objects
 	"(",
@@ -126,6 +126,14 @@ var invalidCases = []string{
 	"",
 	"!(!t!f)",
 	"(a:!t,0:!f,1:!n)",
+	[]byte{0xff, 0xfe, 0xfd},
+}
+
+var invalidEncodeCases = []interface{}{
+	map[float64]int{1.0: 1},
+	complex(.0, 1.0),
+	make(chan struct{}),
+	func() {},
 }
 
 func dumpValue(v interface{}) string {
@@ -212,10 +220,23 @@ func TestDecodeDeepNestedArray(t *testing.T) {
 }
 
 func TestDecodeErrors(t *testing.T) {
-	for _, r := range invalidCases {
-		decoded, err := Decode([]byte(r), Mode_Rison)
+	for _, rs := range invalidDecodeCases {
+		r, ok := rs.([]byte)
+		if !ok {
+			r = []byte(rs.(string))
+		}
+		decoded, err := Decode(r, Mode_Rison)
 		if err == nil {
 			t.Errorf("decoding %s : want an error, got %s", r, dumpValue(decoded))
+		}
+	}
+}
+
+func TestEncodeErrors(t *testing.T) {
+	for _, v := range invalidEncodeCases {
+		encoded, err := Encode(v, Mode_Rison)
+		if err == nil {
+			t.Errorf("encoding %+v : want an error, got %s", v, string(encoded))
 		}
 	}
 }

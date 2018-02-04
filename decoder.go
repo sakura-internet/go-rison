@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 )
 
 // Unmarshal parses the Rison-encoded data and stores the result
@@ -102,6 +103,10 @@ func (p *parser) error(offset int, format string, args ...interface{}) error {
 }
 
 func (p *parser) parse(rison []byte) ([]byte, error) {
+	if !utf8.Valid(rison) {
+		return nil, p.error(0, `rison must be a valid UTF-8 string`)
+	}
+
 	switch p.Mode {
 	case Mode_ORison:
 		rison = append([]byte{'('}, rison...)
