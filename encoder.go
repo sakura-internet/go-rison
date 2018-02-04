@@ -24,7 +24,7 @@ func Marshal(v interface{}, m Mode) ([]byte, error) {
 // FromJSON parses the JSON-encoded data and returns the
 // Rison-encoded data that expresses the equal value.
 func FromJSON(data []byte, m Mode) ([]byte, error) {
-	return (&encoder{Mode: m}).encode(data)
+	return (&encoder{Mode: m}).encode(data, m)
 }
 
 // Encode is an alias of Marshal.
@@ -37,10 +37,7 @@ type encoder struct {
 	buffer *bytes.Buffer
 }
 
-func (e *encoder) encode(data []byte) ([]byte, error) {
-	if bytes.Equal(data, []byte("null")) {
-		return []byte("!n"), nil
-	}
+func (e *encoder) encode(data []byte, m Mode) ([]byte, error) {
 	e.buffer = bytes.NewBuffer([]byte{})
 
 	var v interface{}
@@ -48,11 +45,26 @@ func (e *encoder) encode(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	vv := reflect.ValueOf(v)
+	kind := vv.Kind()
+	switch m {
+	case Mode_ORison:
+		if kind != reflect.Map {
+			return nil, fmt.Errorf("only a struct or a map[string] can be encoded to the O-Rison")
+		}
+	case Mode_ARison:
+		if !(kind == reflect.Slice || kind == reflect.Array) {
+			return nil, fmt.Errorf("only a slice or an array can be encoded to the A-Rison")
+		}
+	}
+
+	if bytes.Equal(data, []byte("null")) {
+		return []byte("!n"), nil
+	}
 	if !vv.IsValid() {
 		return nil, fmt.Errorf("invalid JSON: %s", string(data))
 	}
+
 	err = e.encodeValue("", vv)
 	if err != nil {
 		return nil, err
@@ -60,6 +72,21 @@ func (e *encoder) encode(data []byte) ([]byte, error) {
 
 	r := e.buffer.Bytes()
 	e.buffer = nil
+	n := len(r)
+
+	switch m {
+	case Mode_ORison:
+		if !(3 <= n && r[0] == '(' && r[n-1] == ')') {
+			return nil, fmt.Errorf("failed to encode the value to the O-Rison")
+		}
+		r = r[1 : n-1]
+	case Mode_ARison:
+		if !(4 <= n && r[0] == '!' && r[1] == '(' && r[n-1] == ')') {
+			return nil, fmt.Errorf("failed to encode the value to the A-Rison")
+		}
+		r = r[2 : n-1]
+	}
+
 	return r, nil
 }
 

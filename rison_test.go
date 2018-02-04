@@ -10,16 +10,14 @@ import (
 var testCases = map[string]string{
 
 	// quoted strings
-	"''":                  `""`,
-	"'0a'":                `"0a"`,
-	"'abc def'":           `"abc def"`,
-	"'-h'":                `"-h"`,
-	"'user@domain.com'":   `"user@domain.com"`,
-	"'US $10'":            `"US $10"`,
-	"'wow!!'":             `"wow!"`,
-	"'can!'t'":            `"can't"`,
-	"'Control-F: \u0006'": `"Control-F: \u0006"`,
-	"'Unicode: ௫'":        `"Unicode: ௫"`,
+	"''":                `""`,
+	"'0a'":              `"0a"`,
+	"'abc def'":         `"abc def"`,
+	"'-h'":              `"-h"`,
+	"'user@domain.com'": `"user@domain.com"`,
+	"'US $10'":          `"US $10"`,
+	"'wow!!'":           `"wow!"`,
+	"'can!'t'":          `"can't"`,
 
 	// bare strings
 	"G.":         `"G."`,
@@ -63,6 +61,11 @@ var testCases = map[string]string{
 	`(A:(B:(C:(D:E,F:G)),H:(I:(J:K,L:M))))`:              `{"A":{"B":{"C":{"D":"E","F":"G"}},"H":{"I":{"J":"K","L":"M"}}}}`,
 	`!(A,B,(supportsObjects:!t))`:                        `["A","B",{"supportsObjects":true}]`,
 	"(foo:bar,baz:!(1,12e40,0.42,(a:!t,'0':!f,'1':!n)))": `{"foo":"bar","baz":[1,12e40,0.42,{"a":true,"0":false,"1":null}]}`,
+
+	// character codes
+	"'Control-F: \u0006'": `"Control-F: \u0006"`,
+	"'Unicode: ௫'":        `"Unicode: ௫"`,
+	"(花:上野,柳:銀座,月:隅田)":    `{"花":"上野","柳":"銀座","月":"隅田"}`,
 }
 
 var invalidCases = []string{
@@ -159,7 +162,7 @@ func TestDecodeEncode(t *testing.T) {
 	}
 }
 
-func TestDecodeORison(t *testing.T) {
+func TestDecodeEncodeORison(t *testing.T) {
 	r := `a:1,b:!f`
 	j := `{"a":1,"b":false}`
 	var object interface{}
@@ -167,11 +170,24 @@ func TestDecodeORison(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	decoded, err := Decode([]byte(r), Mode_ORison)
 	if err != nil {
 		t.Errorf("decoding %s : want %s, got error `%s`", r, j, err.Error())
 	} else if !reflect.DeepEqual(object, decoded) {
 		t.Errorf("decoding %s : want %s, got %s", r, j, dumpValue(decoded))
+	}
+
+	encoded, err := Encode(object, Mode_ORison)
+	if err != nil {
+		t.Errorf("encoding %s : want %s, got error `%s`", j, r, err.Error())
+	} else {
+		redecoded, err := Decode(encoded, Mode_ORison)
+		if err != nil {
+			t.Errorf("encoding %s : want %s, got %s and error `%s`", j, r, string(encoded), err.Error())
+		} else if !reflect.DeepEqual(object, redecoded) {
+			t.Errorf("encoding %s : want %s, got %s", j, r, string(encoded))
+		}
 	}
 }
 
@@ -183,11 +199,24 @@ func TestDecodeARison(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	decoded, err := Decode([]byte(r), Mode_ARison)
 	if err != nil {
 		t.Errorf("decoding %s : want %s, got error `%s`", r, j, err.Error())
 	} else if !reflect.DeepEqual(object, decoded) {
 		t.Errorf("decoding %s : want %s, got %s", r, j, dumpValue(decoded))
+	}
+
+	encoded, err := Encode(object, Mode_ARison)
+	if err != nil {
+		t.Errorf("encoding %s : want %s, got error `%s`", j, r, err.Error())
+	} else {
+		redecoded, err := Decode(encoded, Mode_ARison)
+		if err != nil {
+			t.Errorf("encoding %s : want %s, got %s and error `%s`", j, r, string(encoded), err.Error())
+		} else if !reflect.DeepEqual(object, redecoded) {
+			t.Errorf("encoding %s : want %s, got %s", j, r, string(encoded))
+		}
 	}
 }
 
@@ -224,6 +253,26 @@ func TestDecodeErrors(t *testing.T) {
 		decoded, err := Decode([]byte(r), Mode_Rison)
 		if err == nil {
 			t.Errorf("decoding %s : want an error, got %s", r, dumpValue(decoded))
+		}
+	}
+}
+
+func TestEncodeORisonError(t *testing.T) {
+	cases := []interface{}{1, "a", nil, true, []interface{}{}, [1]interface{}{nil}}
+	for _, v := range cases {
+		encoded, err := Encode(v, Mode_ORison)
+		if err == nil {
+			t.Errorf("encoding %+v : want an error, got %s", v, string(encoded))
+		}
+	}
+}
+
+func TestEncodeARisonError(t *testing.T) {
+	cases := []interface{}{1, "a", nil, true, struct{}{}, map[string]interface{}{}}
+	for _, v := range cases {
+		encoded, err := Encode(v, Mode_ARison)
+		if err == nil {
+			t.Errorf("encoding %+v : want an error, got %s", v, string(encoded))
 		}
 	}
 }
