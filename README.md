@@ -1,13 +1,78 @@
 # go-rison
 
 Go port of [Rison](https://github.com/Nanonid/rison).
-The following quotations are some excerpts from the original README:
 
-> This page describes _Rison_, a data serialization format optimized for
-> compactness in URIs. Rison is a slight variation of JSON that looks vastly
-> superior after URI encoding. Rison still expresses exactly the same set of
-> data structures as JSON, so data can be translated back and forth without loss
-> or guesswork.
+This page describes _Rison_, a data serialization format optimized for
+compactness in URIs. Rison is a slight variation of JSON that looks vastly
+superior after URI encoding. Rison still expresses exactly the same set of
+data structures as JSON, so data can be translated back and forth without loss
+or guesswork.
+
+### Examples
+
+```go
+func ExampleDecode() {
+	r := "(id:example,str:'string',num:100,yes:!t,nil:!n,arr:!(1,2,3))"
+	v, _ := rison.Decode([]byte(r), rison.Mode_Rison)
+	m := v.(map[string]interface{})
+	fmt.Printf(
+		"id:%v, str:%v, num:%v, yes:%v, nil:%v, arr:%v",
+		m["id"], m["str"], m["num"], m["yes"], m["nil"], m["arr"],
+	)
+	// Output: id:example, str:string, num:100, yes:true, nil:<nil>, arr:[1 2 3]
+}
+
+type exampleStruct struct {
+	I int64       `json:"i"`
+	F float64     `json:"f"`
+	S string      `json:"s"`
+	B bool        `json:"b"`
+	P *bool       `json:"p"`
+	A []int64     `json:"a"`
+	X interface{} `json:"x"`
+}
+
+func ExampleUnmarshal() {
+	r := "(i:1,f:2.3,s:str,b:!t,p:!n,a:!(7,8,9),x:(y:Y))"
+	var v exampleStruct
+	_ = rison.Unmarshal([]byte(r), &v, rison.Mode_Rison)
+	fmt.Printf("%+v\n", v)
+	// Output: {I:1 F:2.3 S:str B:true P:<nil> A:[7 8 9] X:map[y:Y]}
+}
+
+func ExampleMarshal() {
+	v := exampleStruct{
+		I: 1,
+		F: 2.3,
+		S: "str",
+		B: true,
+		P: nil,
+		A: []int64{7, 8, 9},
+		X: map[string]interface{}{"y": "Y"},
+	}
+	r, _ := rison.Marshal(&v, rison.Mode_Rison)
+	fmt.Println(string(r))
+	// Output: (a:!(7,8,9),b:!t,f:2.3,i:1,p:!n,s:str,x:(y:Y))
+}
+
+func ExampleToJSON() {
+	r := "!(1,2.3,str,'ing',true,nil,(a:b),!(7,8,9))"
+	j, _ := rison.ToJSON([]byte(r), rison.Mode_Rison)
+	fmt.Printf("%s\n", string(j))
+	// Output: [1,2.3,"str","ing","true","nil",{"a":"b"},[7,8,9]]
+}
+
+func ExampleQuote() {
+	s := "~!*()-_.,:@$'/ \"#%&+;<=>?[\\]^`{|}"
+	fmt.Println(rison.QuoteString(s))
+	// Output: ~!*()-_.,:@$'/+%22%23%25%26%2B%3B%3C%3D%3E%3F%5B%5C%5D%5E%60%7B%7C%7D
+}
+```
+
+----
+
+The following quotations are some excerpts from the original README
+and [the original article](https://web.archive.org/web/20130910064110/http://mjtemplate.org/examples/rison.html):
 
 > ### Differences from JSON syntax
 >
@@ -72,63 +137,82 @@ The following quotations are some excerpts from the original README:
 > strings. This includes newlines and control characters. Quoting all such
 > characters is left to the %-encoding process.
 
-### Examples
-
-```go
-func ExampleDecode() {
-	r := "(id:example,str:'string',num:100,yes:!t,nil:!n,arr:!(1,2,3))"
-	v, _ := rison.Decode([]byte(r), rison.Mode_Rison)
-	m := v.(map[string]interface{})
-	fmt.Printf(
-		"id:%v, str:%v, num:%v, yes:%v, nil:%v, arr:%v",
-		m["id"], m["str"], m["num"], m["yes"], m["nil"], m["arr"],
-	)
-	// Output: id:example, str:string, num:100, yes:true, nil:<nil>, arr:[1 2 3]
-}
-
-type exampleStruct struct {
-	I int64       `json:"i"`
-	F float64     `json:"f"`
-	S string      `json:"s"`
-	B bool        `json:"b"`
-	P *bool       `json:"p"`
-	A []int64     `json:"a"`
-	X interface{} `json:"x"`
-}
-
-func ExampleUnmarshal() {
-	r := "(i:1,f:2.3,s:str,b:!t,p:!n,a:!(7,8,9),x:(y:Y))"
-	var v exampleStruct
-	_ = rison.Unmarshal([]byte(r), &v, rison.Mode_Rison)
-	fmt.Printf("%+v\n", v)
-	// Output: {I:1 F:2.3 S:str B:true P:<nil> A:[7 8 9] X:map[y:Y]}
-}
-
-func ExampleMarshal() {
-	v := exampleStruct{
-		I: 1,
-		F: 2.3,
-		S: "str",
-		B: true,
-		P: nil,
-		A: []int64{7, 8, 9},
-		X: map[string]interface{}{"y": "Y"},
-	}
-	r, _ := rison.Marshal(&v, rison.Mode_Rison)
-	fmt.Println(string(r))
-	// Output: (a:!(7,8,9),b:!t,f:2.3,i:1,p:!n,s:str,x:(y:Y))
-}
-
-func ExampleToJSON() {
-	r := "!(1,2.3,str,'ing',true,nil,(a:b),!(7,8,9))"
-	j, _ := rison.ToJSON([]byte(r), rison.Mode_Rison)
-	fmt.Printf("%s\n", string(j))
-	// Output: [1,2.3,"str","ing","true","nil",{"a":"b"},[7,8,9]]
-}
-
-func ExampleQuote() {
-	s := "~!*()-_.,:@$'/ \"#%&+;<=>?[\\]^`{|}"
-	fmt.Println(rison.QuoteString(s))
-	// Output: ~!*()-_.,:@$'/+%22%23%25%26%2B%3B%3C%3D%3E%3F%5B%5C%5D%5E%60%7B%7C%7D
-}
-```
+> modified from the json.org grammar.
+>
+> - object
+>   - `()`
+>   - `(` members `)`
+> - members
+>   - pair
+>   - pair `,` members
+> - pair
+>   - key `:` value
+> - array
+>   - `!()`
+>   - `!(` elements `)`
+> - elements
+>   - value 
+>   - value `,` elements
+> - key
+>   - id
+>   - string
+> - value
+>   - id
+>   - string
+>   - number
+>   - object
+>   - array
+>   - `!t`
+>   - `!f`
+>   - `!n`
+>
+> ----
+>
+> - id
+>   - idstart
+>   - idstart idchars
+> - idchars
+>   - idchar
+>   - idchar idchars
+> - idchar
+>   - any alphanumeric ASCII character
+>   - any ASCII character from the set `-` `_` `.` `/` `~`
+>   - any non-ASCII Unicode character
+> - idstart
+>   - any idchar not in `-` `,` digit
+>
+> ----
+>
+> - string
+>   - `''`
+>   - `'` strchars `'`
+> - strchars
+>   - strchar
+>   - strchar strchars
+> - strchar
+>   - any Unicode character except `-` ASCII `'` and `!`
+>   - `!!`
+>   - `!'`
+>
+> ----
+>
+> - number
+>   - int
+>   - int frac
+>   - int exp
+>   - int frac exp
+> - int
+>   - digit
+>   - digit1-9 digits 
+>   - `-` digit
+>   - `-` digit1-9 digits
+> - frac
+>   - `.` digits
+> - exp
+>   - e digits
+> - digits
+>   - digit
+>   - digit digits
+> - e
+>   - `e`
+>   - `e-`
