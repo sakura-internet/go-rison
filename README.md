@@ -8,7 +8,7 @@ superior after URI encoding. Rison still expresses exactly the same set of
 data structures as JSON, so data can be translated back and forth without loss
 or guesswork.
 
-### Examples
+## Examples
 
 ```go
 func ExampleDecode() {
@@ -69,150 +69,152 @@ func ExampleQuote() {
 }
 ```
 
+## Descriptions
+
+The following descriptions are some excerpts from [the original README](https://github.com/Nanonid/rison)
+and [the article](https://web.archive.org/web/20130910064110/http://mjtemplate.org/examples/rison.html):
+
+### Differences from JSON syntax
+
+  * no whitespace is permitted except inside quoted strings. 
+  * almost all character escaping is left to the uri encoder. 
+  * single-quotes are used for quoting, but quotes can and should be left off strings when the strings are simple identifiers. 
+  * the `e+` exponent format is forbidden, since `+` is not safe in form values and the plain `e` format is equivalent. 
+  * the `E`, `E+`, and `E` exponent formats are removed. 
+  * object keys should be lexically sorted when encoding. the intent is to improve url cacheability. 
+  * uri-safe tokens are used in place of the standard json tokens: 
+
+rison token json token  meaning
+
+* `'` `"` string quote
+* `!` `\` string escape
+* `(...)` `{...}` object
+* `!(...)` `[...]` array
+
+* the JSON literals that look like identifiers (`true`, `false` and `null`) are represented as `!` sequences: 
+
+rison token json token
+
+* `!t` true
+* `!f` false
+* `!n` null
+
+The `!` character plays two similar but different roles, as an escape
+character within strings, and as a marker for special values. This may be
+confusing.
+
+Notice that services can distinguish Rison-encoded strings from JSON-encoded
+strings by checking the first character. Rison structures start with `(` or
+`!(`. JSON structures start with `[` or `{`. This means that a service which
+expects a JSON encoded object or array can accept Rison-encoded objects
+without loss of compatibility.
+
+### Interaction with URI %-encoding
+
+Rison syntax is designed to produce strings that be legible after being [form-
+encoded](http://www.w3.org/TR/html4/interact/forms.html#form-content-type) for
+the [query](http://gbiv.com/protocols/uri/rfc/rfc3986.html#query) section of a
+URI. None of the characters in the Rison syntax need to be URI encoded in that
+context, though the data itself may require URI encoding. Rison tries to be
+orthogonal to the %-encoding process - it just defines a string format that
+should survive %-encoding with very little bloat. Rison quoting is only
+applied when necessary to quote characters that might otherwise be interpreted
+as special syntax.
+
+Note that most URI encoding libraries are very conservative, percent-encoding
+many characters that are legal according to [RFC
+3986](http://gbiv.com/protocols/uri/rfc/rfc3986.html). For example,
+Javascript's builtin `encodeURIComponent()` function will still make Rison
+strings difficult to read. The rison.js library includes a more tolerant URI
+encoder.
+
+Rison uses its own quoting for strings, using the single quote (`**'**`) as a
+string delimiter and the exclamation point (`**!**`) as the string escape
+character. Both of these characters are legal in uris. Rison quoting is
+largely inspired by Unix shell command line parsing.
+
+All Unicode characters other than `**'**` and `**!**` are legal inside quoted
+strings. This includes newlines and control characters. Quoting all such
+characters is left to the %-encoding process.
+
+### Grammar
+
+modified from the json.org grammar.
+
+- object
+  - `()`
+  - `(` members `)`
+- members
+  - pair
+  - pair `,` members
+- pair
+  - key `:` value
+- array
+  - `!()`
+  - `!(` elements `)`
+- elements
+  - value 
+  - value `,` elements
+- key
+  - id
+  - string
+- value
+  - id
+  - string
+  - number
+  - object
+  - array
+  - `!t`
+  - `!f`
+  - `!n`
+
 ----
 
-The following quotations are some excerpts from the original README
-and [the original article](https://web.archive.org/web/20130910064110/http://mjtemplate.org/examples/rison.html):
+- id
+  - idstart
+  - idstart idchars
+- idchars
+  - idchar
+  - idchar idchars
+- idchar
+  - any alphanumeric ASCII character
+  - any ASCII character from the set `-` `_` `.` `/` `~`
+  - any non-ASCII Unicode character
+- idstart
+  - any idchar not in `-` `,` digit
 
-> ### Differences from JSON syntax
->
->   * no whitespace is permitted except inside quoted strings. 
->   * almost all character escaping is left to the uri encoder. 
->   * single-quotes are used for quoting, but quotes can and should be left off strings when the strings are simple identifiers. 
->   * the `e+` exponent format is forbidden, since `+` is not safe in form values and the plain `e` format is equivalent. 
->   * the `E`, `E+`, and `E` exponent formats are removed. 
->   * object keys should be lexically sorted when encoding. the intent is to improve url cacheability. 
->   * uri-safe tokens are used in place of the standard json tokens: 
->
-> rison token json token  meaning
->
-> * `'` `"` string quote
-> * `!` `\` string escape
-> * `(...)` `{...}` object
-> * `!(...)` `[...]` array
->
-> * the JSON literals that look like identifiers (`true`, `false` and `null`) are represented as `!` sequences: 
->
-> rison token json token
->
-> * `!t` true
-> * `!f` false
-> * `!n` null
->
-> The `!` character plays two similar but different roles, as an escape
-> character within strings, and as a marker for special values. This may be
-> confusing.
->
-> Notice that services can distinguish Rison-encoded strings from JSON-encoded
-> strings by checking the first character. Rison structures start with `(` or
-> `!(`. JSON structures start with `[` or `{`. This means that a service which
-> expects a JSON encoded object or array can accept Rison-encoded objects
-> without loss of compatibility.
+----
 
-> ### Interaction with URI %-encoding
->
-> Rison syntax is designed to produce strings that be legible after being [form-
-> encoded](http://www.w3.org/TR/html4/interact/forms.html#form-content-type) for
-> the [query](http://gbiv.com/protocols/uri/rfc/rfc3986.html#query) section of a
-> URI. None of the characters in the Rison syntax need to be URI encoded in that
-> context, though the data itself may require URI encoding. Rison tries to be
-> orthogonal to the %-encoding process - it just defines a string format that
-> should survive %-encoding with very little bloat. Rison quoting is only
-> applied when necessary to quote characters that might otherwise be interpreted
-> as special syntax.
->
-> Note that most URI encoding libraries are very conservative, percent-encoding
-> many characters that are legal according to [RFC
-> 3986](http://gbiv.com/protocols/uri/rfc/rfc3986.html). For example,
-> Javascript's builtin `encodeURIComponent()` function will still make Rison
-> strings difficult to read. The rison.js library includes a more tolerant URI
-> encoder.
->
-> Rison uses its own quoting for strings, using the single quote (`**'**`) as a
-> string delimiter and the exclamation point (`**!**`) as the string escape
-> character. Both of these characters are legal in uris. Rison quoting is
-> largely inspired by Unix shell command line parsing.
->
-> All Unicode characters other than `**'**` and `**!**` are legal inside quoted
-> strings. This includes newlines and control characters. Quoting all such
-> characters is left to the %-encoding process.
+- string
+  - `''`
+  - `'` strchars `'`
+- strchars
+  - strchar
+  - strchar strchars
+- strchar
+  - any Unicode character except `-` ASCII `'` and `!`
+  - `!!`
+  - `!'`
 
-> modified from the json.org grammar.
->
-> - object
->   - `()`
->   - `(` members `)`
-> - members
->   - pair
->   - pair `,` members
-> - pair
->   - key `:` value
-> - array
->   - `!()`
->   - `!(` elements `)`
-> - elements
->   - value 
->   - value `,` elements
-> - key
->   - id
->   - string
-> - value
->   - id
->   - string
->   - number
->   - object
->   - array
->   - `!t`
->   - `!f`
->   - `!n`
->
-> ----
->
-> - id
->   - idstart
->   - idstart idchars
-> - idchars
->   - idchar
->   - idchar idchars
-> - idchar
->   - any alphanumeric ASCII character
->   - any ASCII character from the set `-` `_` `.` `/` `~`
->   - any non-ASCII Unicode character
-> - idstart
->   - any idchar not in `-` `,` digit
->
-> ----
->
-> - string
->   - `''`
->   - `'` strchars `'`
-> - strchars
->   - strchar
->   - strchar strchars
-> - strchar
->   - any Unicode character except `-` ASCII `'` and `!`
->   - `!!`
->   - `!'`
->
-> ----
->
-> - number
->   - int
->   - int frac
->   - int exp
->   - int frac exp
-> - int
->   - digit
->   - digit1-9 digits 
->   - `-` digit
->   - `-` digit1-9 digits
-> - frac
->   - `.` digits
-> - exp
->   - e digits
-> - digits
->   - digit
->   - digit digits
-> - e
->   - `e`
->   - `e-`
+----
+
+- number
+  - int
+  - int frac
+  - int exp
+  - int frac exp
+- int
+  - digit
+  - digit1-9 digits 
+  - `-` digit
+  - `-` digit1-9 digits
+- frac
+  - `.` digits
+- exp
+  - e digits
+- digits
+  - digit
+  - digit digits
+- e
+  - `e`
+  - `e-`
