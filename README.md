@@ -139,82 +139,79 @@ characters is left to the %-encoding process.
 
 ### Grammar
 
-modified from the json.org grammar.
+modified from the [json.org](https://web.archive.org/web/20130910064110/http://json.org/) grammar.
 
-- object
+- _object_
   - `()`
-  - `(` members `)`
-- members
-  - pair
-  - pair `,` members
-- pair
-  - key `:` value
-- array
+  - `(` _members_ `)`
+- _members_
+  - _pair_
+  - _pair_ `,` _members_
+- _pair_
+  - _key_ `:` _value_
+- _array_
   - `!()`
-  - `!(` elements `)`
-- elements
-  - value 
-  - value `,` elements
-- key
-  - id
-  - string
-- value
-  - id
-  - string
-  - number
-  - object
-  - array
+  - `!(` _elements_ `)`
+- _elements_
+  - _value_
+  - _value_ `,` _elements_
+- _key_
+  - _id_
+  - _string_
+- _value_
+  - _id_
+  - _string_
+  - _number_
+  - _object_
+  - _array_
   - `!t`
   - `!f`
   - `!n`
-
-----
-
-- id
-  - idstart
-  - idstart idchars
-- idchars
-  - idchar
-  - idchar idchars
-- idchar
+    <br>
+    　　　　────────────
+- _id_
+  - _idstart_
+  - _idstart_ _idchars_
+- _idchars_
+  - _idchar_
+  - _idchar_ _idchars_
+- _idchar_
   - any alphanumeric ASCII character
   - any ASCII character from the set `-` `_` `.` `/` `~`
   - any non-ASCII Unicode character
-- idstart
-  - any idchar not in `-` `,` digit
-
-----
-
-- string
+- _idstart_
+  - any _idchar_ not in `-`, _digit_
+    <br>
+    　　　　────────────
+- _string_
   - `''`
-  - `'` strchars `'`
-- strchars
-  - strchar
-  - strchar strchars
-- strchar
-  - any Unicode character except `-` ASCII `'` and `!`
+  - `'` _strchars_ `'`
+- _strchars_
+  - _strchar_
+  - _strchar_ _strchars_
+- _strchar_
+  - any Unicode character except ASCII `'` and `!`
   - `!!`
   - `!'`
-
-----
-
-- number
-  - int
-  - int frac
-  - int exp
-  - int frac exp
-- int
-  - digit
-  - digit1-9 digits 
+    <br>
+    　　　　────────────
+- _number_
+  - _int_
+  - _int_ _frac_
+  - _int_ _exp_
+  - _int_ _frac_ _exp_
+- _int_
+  - _digit_
+  - _digit1-9_ _digits_
   - `-` digit
   - `-` digit1-9 digits
-- frac
-  - `.` digits
-- exp
-  - e digits
-- digits
-  - digit
-  - digit digits
-- e
+- _frac_
+  - `.` _digits_
+- _exp_
+  - _e_ _digits_
+- _digits_
+  - _digit_
+  - _digit_ _digits_
+- _e_
   - `e`
   - `e-`
