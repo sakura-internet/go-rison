@@ -22,6 +22,8 @@ func ExampleDecode() {
 	// Output: id:example, str:string, num:100, yes:true, nil:<nil>, arr:[1 2 3]
 }
 
+// The object keys corresponding the struct fields can be
+// specified in struct tag (not "rison" but) "json".
 type exampleStruct struct {
 	I int64       `json:"i"`
 	F float64     `json:"f"`
