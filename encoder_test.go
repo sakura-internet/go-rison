@@ -3,7 +3,7 @@ package rison_test
 import (
 	"fmt"
 
-	"github.com/townewgokgok/go-rison"
+	"github.com/sakura-internet/go-rison"
 )
 
 func ExampleMarshal() {

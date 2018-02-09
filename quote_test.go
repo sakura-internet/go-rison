@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/townewgokgok/go-rison"
+	"github.com/sakura-internet/go-rison"
 )
 
 func ExampleQuote() {
