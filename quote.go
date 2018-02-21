@@ -35,6 +35,7 @@ func QuoteString(s string) string {
 	})
 }
 
+// Quote is like "net/url".QueryEscape but quotes fewer characters.
 func Quote(s []byte) []byte {
 	return []byte(QuoteString(string(s)))
 }

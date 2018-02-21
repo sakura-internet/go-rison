@@ -87,6 +87,9 @@ var invalidDecodeCases = []interface{}{
 	"(,bar:2)",
 	"(1not:'id')",
 
+	// arrays
+	"name:hoge,plan:!(1,2,3),availability~:disabled,size_gib-GE:100,size_gib~GE:1024,tags:stable,tags~:!(deprecated,dev),", // raises irrelevant error message
+
 	// strings
 	"'",
 	"'abc",
@@ -153,21 +156,21 @@ func TestDecodeEncode(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		modes := []Mode{Mode_Rison}
+		modes := []Mode{Rison}
 		n := len(r)
 		if 3 <= n && r[0] == '(' && r[n-1] == ')' {
-			modes = append(modes, Mode_ORison)
+			modes = append(modes, ORison)
 		}
 		if 4 <= n && r[0] == '!' && r[1] == '(' && r[n-1] == ')' {
-			modes = append(modes, Mode_ARison)
+			modes = append(modes, ARison)
 		}
 
 		for _, m := range modes {
 			r2 := r
 			switch m {
-			case Mode_ORison:
+			case ORison:
 				r2 = r[1 : n-1]
-			case Mode_ARison:
+			case ARison:
 				r2 = r[2 : n-1]
 			}
 			decoded, err := Decode([]byte(r2), m)
@@ -200,7 +203,7 @@ func TestDecodeDeepNestedObject(t *testing.T) {
 		r += ",c:3)"
 	}
 	l += "2"
-	_, err := Decode([]byte(l+r), Mode_Rison)
+	_, err := Decode([]byte(l+r), Rison)
 	if err != nil {
 		t.Errorf("decoding %s .. : want no error, got error `%s`", l[:100], err.Error())
 	}
@@ -214,7 +217,7 @@ func TestDecodeDeepNestedArray(t *testing.T) {
 		r += ",!())"
 	}
 	l += "!()"
-	_, err := Decode([]byte(l+r), Mode_Rison)
+	_, err := Decode([]byte(l+r), Rison)
 	if err != nil {
 		t.Errorf("decoding %s .. : want no error, got error `%s`", l[:100], err.Error())
 	}
@@ -226,7 +229,7 @@ func TestDecodeErrors(t *testing.T) {
 		if !ok {
 			r = []byte(rs.(string))
 		}
-		decoded, err := Decode(r, Mode_Rison)
+		decoded, err := Decode(r, Rison)
 		if err == nil {
 			t.Errorf("decoding %s : want an error, got %s", r, dumpValue(decoded))
 		}
@@ -235,7 +238,7 @@ func TestDecodeErrors(t *testing.T) {
 
 func TestEncodeErrors(t *testing.T) {
 	for _, v := range invalidEncodeCases {
-		encoded, err := Encode(v, Mode_Rison)
+		encoded, err := Encode(v, Rison)
 		if err == nil {
 			t.Errorf("encoding %+v : want an error, got %s", v, string(encoded))
 		}
@@ -245,7 +248,7 @@ func TestEncodeErrors(t *testing.T) {
 func TestEncodeORisonError(t *testing.T) {
 	cases := []interface{}{1, "a", nil, true, []interface{}{}, [1]interface{}{nil}}
 	for _, v := range cases {
-		encoded, err := Encode(v, Mode_ORison)
+		encoded, err := Encode(v, ORison)
 		if err == nil {
 			t.Errorf("encoding %+v : want an error, got %s", v, string(encoded))
 		}
@@ -255,7 +258,7 @@ func TestEncodeORisonError(t *testing.T) {
 func TestEncodeARisonError(t *testing.T) {
 	cases := []interface{}{1, "a", nil, true, struct{}{}, map[string]interface{}{}}
 	for _, v := range cases {
-		encoded, err := Encode(v, Mode_ARison)
+		encoded, err := Encode(v, ARison)
 		if err == nil {
 			t.Errorf("encoding %+v : want an error, got %s", v, string(encoded))
 		}

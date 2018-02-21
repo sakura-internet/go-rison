@@ -77,10 +77,10 @@ func (p *parser) error(offset int, format string, args ...interface{}) error {
 	i := p.index
 	s := p.string
 	switch p.Mode {
-	case Mode_ORison:
+	case ORison:
 		s = substr(s, 1, -1)
 		i--
-	case Mode_ARison:
+	case ARison:
 		s = substr(s, 2, -1)
 		i -= 2
 	}
@@ -108,10 +108,10 @@ func (p *parser) parse(rison []byte) ([]byte, error) {
 	}
 
 	switch p.Mode {
-	case Mode_ORison:
+	case ORison:
 		rison = append([]byte{'('}, rison...)
 		rison = append(rison, ')')
-	case Mode_ARison:
+	case ARison:
 		rison = append([]byte{'!', '('}, rison...)
 		rison = append(rison, ')')
 	}
@@ -149,7 +149,7 @@ func (p *parser) readValue() error {
 
 	p.index--
 
-	ok, err := p.parseId()
+	ok, err := p.parseID()
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func (p *parser) readValue() error {
 	return p.error(0, `invalid character: "%c"`, c)
 }
 
-func (p *parser) parseId() (bool, error) {
+func (p *parser) parseID() (bool, error) {
 	s := p.string
 	n := len(s)
 	i := p.index
@@ -168,7 +168,7 @@ func (p *parser) parseId() (bool, error) {
 		return false, nil
 	}
 	c := s[i]
-	if 0 <= strings.IndexByte(notIdStart, c) {
+	if 0 <= strings.IndexByte(notIDStart, c) {
 		return false, nil
 	}
 	i++
@@ -178,7 +178,7 @@ func (p *parser) parseId() (bool, error) {
 			break
 		}
 		c := s[i]
-		if 0 <= strings.IndexByte(notIdChar, c) {
+		if 0 <= strings.IndexByte(notIDChar, c) {
 			break
 		}
 		i++
@@ -329,19 +329,19 @@ func (p *parser) parseQuotedString() error {
 type parseNumberState int
 
 const (
-	parseNumberState_end parseNumberState = iota
-	parseNumberState_int
-	parseNumberState_frac
-	parseNumberState_exp
+	parseNumberStateEnd parseNumberState = iota
+	parseNumberStateInt
+	parseNumberStateFrac
+	parseNumberStateExp
 )
 
 func (p *parser) parseNumber() error {
 	s := p.string
 	i := p.index
 	start := i - 1
-	state := parseNumberState_int
+	state := parseNumberStateInt
 	permittedSigns := []byte{'-'}
-	for state != parseNumberState_end {
+	for state != parseNumberStateEnd {
 		if len(s) <= i {
 			i++
 			break
@@ -356,24 +356,24 @@ func (p *parser) parseNumber() error {
 			continue
 		}
 		switch state {
-		case parseNumberState_int:
+		case parseNumberStateInt:
 			if c == '.' {
-				state = parseNumberState_frac
+				state = parseNumberStateFrac
 			} else if c == 'e' {
-				state = parseNumberState_exp
+				state = parseNumberStateExp
 				permittedSigns = []byte{'-'}
 			} else {
-				state = parseNumberState_end
+				state = parseNumberStateEnd
 			}
-		case parseNumberState_frac:
+		case parseNumberStateFrac:
 			if c == 'e' {
-				state = parseNumberState_exp
+				state = parseNumberStateExp
 				permittedSigns = []byte{'-'}
 			} else {
-				state = parseNumberState_end
+				state = parseNumberStateEnd
 			}
 		default:
-			state = parseNumberState_end
+			state = parseNumberStateEnd
 		}
 	}
 	i--

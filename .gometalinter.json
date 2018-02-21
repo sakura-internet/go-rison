@@ -1,0 +1,9 @@
+{
+  "Enable": ["vet", "golint", "goimports"],
+  "Vendor": true,
+  "Skip": ["vendor/"],
+  "Exclude": [
+    "(comment on exported \\w+ \\S+|package comment) should be of the form",
+    "exported const \\S+ should have comment \\(or a comment on this block\\) or be unexported"
+  ]
+}

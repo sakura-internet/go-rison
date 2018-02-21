@@ -16,14 +16,14 @@ func ExampleMarshal() {
 		A: []int64{7, 8, 9},
 		X: map[string]interface{}{"y": "Y"},
 	}
-	r, _ := rison.Marshal(&v, rison.Mode_Rison)
+	r, _ := rison.Marshal(&v, rison.Rison)
 	fmt.Println(string(r))
 	// Output: (a:!(7,8,9),b:!t,f:2.3,i:1,p:!n,s:str,x:(y:Y))
 }
 
 func ExampleFromJSON() {
 	j := `[1,2.3,"str","-ing","true","nil",{"a":"b"},[7,8,9]]`
-	r, err := rison.FromJSON([]byte(j), rison.Mode_Rison)
+	r, err := rison.FromJSON([]byte(j), rison.Rison)
 	if err != nil {
 		panic(err)
 	}

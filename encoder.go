@@ -48,11 +48,11 @@ func (e *encoder) encode(data []byte, m Mode) ([]byte, error) {
 	vv := reflect.ValueOf(v)
 	kind := vv.Kind()
 	switch m {
-	case Mode_ORison:
+	case ORison:
 		if kind != reflect.Map {
 			return nil, fmt.Errorf("only a struct or a map[string] can be encoded to the O-Rison")
 		}
-	case Mode_ARison:
+	case ARison:
 		if !(kind == reflect.Slice || kind == reflect.Array) {
 			return nil, fmt.Errorf("only a slice or an array can be encoded to the A-Rison")
 		}
@@ -75,12 +75,12 @@ func (e *encoder) encode(data []byte, m Mode) ([]byte, error) {
 	n := len(r)
 
 	switch m {
-	case Mode_ORison:
+	case ORison:
 		if !(3 <= n && r[0] == '(' && r[n-1] == ')') {
 			return nil, fmt.Errorf("failed to encode the value to the O-Rison")
 		}
 		r = r[1 : n-1]
-	case Mode_ARison:
+	case ARison:
 		if !(4 <= n && r[0] == '!' && r[1] == '(' && r[n-1] == ')') {
 			return nil, fmt.Errorf("failed to encode the value to the A-Rison")
 		}
@@ -95,11 +95,11 @@ func idOk(s string) bool {
 	if n == 0 {
 		return false
 	}
-	if 0 <= strings.IndexByte(notIdStart, s[0]) {
+	if 0 <= strings.IndexByte(notIDStart, s[0]) {
 		return false
 	}
 	for i := 1; i < n; i++ {
-		if 0 <= strings.IndexByte(notIdChar, s[i]) {
+		if 0 <= strings.IndexByte(notIDChar, s[i]) {
 			return false
 		}
 	}

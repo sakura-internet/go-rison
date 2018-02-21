@@ -11,15 +11,16 @@
 package rison
 
 const (
-	notIdChar        = ` '!:(),*@$`
-	notIdStart       = notIdChar + `0123456789-`
+	notIDChar        = ` '!:(),*@$`
+	notIDStart       = notIDChar + `0123456789-`
 	parserWhitespace = " \t\n\r\f"
 )
 
+// Mode is an enum type to specify which Rison variation to use to encode/decode.
 type Mode int
 
 const (
-	Mode_Rison Mode = iota
-	Mode_ORison
-	Mode_ARison
+	Rison Mode = iota
+	ORison
+	ARison
 )
