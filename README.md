@@ -1,5 +1,7 @@
 # go-rison
 
+[![MIT License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE)
+
 Go port of [Rison](https://github.com/Nanonid/rison).
 
 This page describes _Rison_, a data serialization format optimized for
