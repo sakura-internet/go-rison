@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -233,6 +234,7 @@ func TestDecodeErrors(t *testing.T) {
 		if err == nil {
 			t.Errorf("decoding %s : want an error, got %s", r, dumpValue(decoded))
 		}
+		fmt.Printf("%-20s%s\n", r, strings.Replace(err.Error(), "\n", "\n                    ", -1))
 	}
 }
 
