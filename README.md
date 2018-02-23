@@ -1,7 +1,7 @@
 # go-rison
 
 ![](https://circleci.com/gh/sakura-internet/go-rison/tree/master.svg?style=shield&circle-token=1e751b4de85836df4db87a736dc1e9ff208fbd12)
-[![MIT License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE)
+[![MIT License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
 
 Go port of [Rison](https://github.com/Nanonid/rison).
 
