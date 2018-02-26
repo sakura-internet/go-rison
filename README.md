@@ -98,21 +98,21 @@ and [the article](https://web.archive.org/web/20130910064110/http://mjtemplate.o
   * the `E`, `E+`, and `E` exponent formats are removed. 
   * object keys should be lexically sorted when encoding. the intent is to improve url cacheability. 
   * uri-safe tokens are used in place of the standard json tokens: 
-
-|rison token|json token|meaning      |
-|:----------|:---------|:------------|
-|`'`        |`"`       |string quote |
-|`!`        |`\`       |string escape|
-|`(...)`    |`{...}`   |object       |
-|`!(...)`   |`[...]`   |array        |
-
-* the JSON literals that look like identifiers (`true`, `false` and `null`) are represented as `!` sequences: 
-
-|rison token|json token|
-|:----------|:---------|
-|`!t`       |`true`    |
-|`!f`       |`false`   |
-|`!n`       |`null`    |
+    
+    |rison token|json token|meaning      |
+    |:----------|:---------|:------------|
+    |`'`        |`"`       |string quote |
+    |`!`        |`\`       |string escape|
+    |`(...)`    |`{...}`   |object       |
+    |`!(...)`   |`[...]`   |array        |
+    
+  * the JSON literals that look like identifiers (`true`, `false` and `null`) are represented as `!` sequences: 
+    
+    |rison token|json token|
+    |:----------|:---------|
+    |`!t`       |`true`    |
+    |`!f`       |`false`   |
+    |`!n`       |`null`    |
 
 The `!` character plays two similar but different roles, as an escape
 character within strings, and as a marker for special values. This may be
