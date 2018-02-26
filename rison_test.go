@@ -224,6 +224,11 @@ func TestDecodeDeepNestedArray(t *testing.T) {
 	}
 }
 
+func indent(s string) string {
+	t := "\t\t"
+	return t + strings.Replace(s, "\n", "\n"+t, -1)
+}
+
 func TestDecodeErrors(t *testing.T) {
 	for _, rs := range invalidDecodeCases {
 		r, ok := rs.([]byte)
@@ -232,9 +237,15 @@ func TestDecodeErrors(t *testing.T) {
 		}
 		decoded, err := Decode(r, Rison)
 		if err == nil {
-			t.Errorf("decoding %s : want an error, got %s", r, dumpValue(decoded))
+			t.Errorf("decoding %s : want *ParseError, got %s", r, dumpValue(decoded))
 		}
-		fmt.Printf("%-20s%s\n", r, strings.Replace(err.Error(), "\n", "\n                    ", -1))
+		e, ok := err.(*ParseError)
+		if !ok {
+			t.Errorf("decoding %s : want *ParseError, got else", r)
+		}
+		fmt.Printf(`"%s"`+"\n", string(r))
+		fmt.Println(indent(e.ErrorInLang("en")))
+		fmt.Println(indent(e.ErrorInLang("ja")))
 	}
 }
 

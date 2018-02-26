@@ -84,50 +84,72 @@ type parser struct {
 	buffer          *bytes.Buffer
 }
 
+// ParseError is an error type to be raised by parser
 type ParseError struct {
 	Child error
-	Err   string
+	Type  ErrorType
+	Args  []interface{}
 	Src   []byte
 	Pos   int
 }
 
 func (e *ParseError) Error() string {
+	return e.ErrorInLang("en")
+}
+
+// ErrorInLang returns the error message in specified language.
+func (e *ParseError) ErrorInLang(lang string) string {
+	desc, ok := errPosDesc[lang]
+	if !ok {
+		desc = errPosDesc["en"]
+	}
 	n := 5
 	ll := ""
 	if 0 < e.Pos-n {
-		ll = ".. "
+		ll = desc[errPos_ellipsisLeft]
 	}
 	l := string(substrLimited(e.Src, e.Pos-n, n))
 	c := string(substrLimited(e.Src, e.Pos, 1))
 	r := string(substrLimited(e.Src, e.Pos+1, n))
 	rr := ""
 	if e.Pos+1+n < len(e.Src) {
-		rr = " .."
+		rr = desc[errPos_ellipsisRight]
 	}
-	w := fmt.Sprintf(` at [%d] near %s"%s" -> "%s" -> "%s"%s`, e.Pos, ll, l, c, r, rr)
+	w := fmt.Sprintf(desc[errPos_near], e.Pos, ll, l, c, r, rr)
 	if l == "" {
 		if r == "" {
 			if c == "" {
 				w = ""
 			} else {
-				w = fmt.Sprintf(` at the first character "%s"`, c)
+				w = fmt.Sprintf(desc[errPos_first], c)
 			}
 		} else {
-			w = fmt.Sprintf(` at the first character "%s" -> "%s"%s`, c, r, rr)
+			w = fmt.Sprintf(desc[errPos_start], c, r, rr)
 		}
 	} else if c == "" {
-		w = fmt.Sprintf(` at the end of string %s"%s" -> EOS`, ll, l)
+		w = fmt.Sprintf(desc[errPos_end], ll, l)
 	} else if r == "" {
-		w = fmt.Sprintf(` at the last character %s"%s" -> "%s"`, ll, l, c)
+		w = fmt.Sprintf(desc[errPos_last], ll, l, c)
 	}
-	result := fmt.Sprintf(`%s%s`, e.Err, w)
-	if e.Child != nil {
-		result += "\n" + e.Child.Error()
+	msgdef, ok := errorMessage[lang]
+	if !ok {
+		msgdef = errorMessage["en"]
 	}
+	msgfmt, ok := msgdef[e.Type]
+	var msg string
+	if ok {
+		msg = fmt.Sprintf(msgfmt, e.Args...)
+	} else {
+		msg = fmt.Sprintf(msgdef[ErrorType_Internal], fmt.Sprintf("err=%d", int(e.Type)))
+	}
+	result := msg + w
+	//if e.Child != nil {
+	//	result += "\n" + e.Child.Error()
+	//}
 	return result
 }
 
-func (p *parser) errorf(pos int, err error, format string, args ...interface{}) error {
+func (p *parser) errorf(pos int, err error, typ ErrorType, args ...interface{}) error {
 	i := p.index
 	src := p.string
 	switch p.Mode {
@@ -141,7 +163,8 @@ func (p *parser) errorf(pos int, err error, format string, args ...interface{}) 
 	pos += i
 	return &ParseError{
 		Child: err,
-		Err:   fmt.Sprintf(format, args...),
+		Type:  typ,
+		Args:  args,
 		Src:   src,
 		Pos:   pos,
 	}
@@ -149,7 +172,7 @@ func (p *parser) errorf(pos int, err error, format string, args ...interface{}) 
 
 func (p *parser) parse(rison []byte) ([]byte, error) {
 	if !utf8.Valid(rison) {
-		return nil, p.errorf(0, nil, `rison must be a valid UTF-8 string`)
+		return nil, p.errorf(0, nil, ErrorType_Encoding)
 	}
 
 	switch p.Mode {
@@ -163,16 +186,18 @@ func (p *parser) parse(rison []byte) ([]byte, error) {
 	p.string = rison
 	p.index = 0
 	p.buffer = bytes.NewBuffer(make([]byte, 0, len(rison)))
-	_, err := p.readValue()
+	typ, err := p.readValue()
 	if err != nil {
 		return nil, err
 	}
 	j := p.buffer.Bytes()
 	p.buffer = nil
 	if p.index < len(p.string) {
-		// TODO: error message for large E in exponential number
 		c := p.string[p.index]
-		return j, p.errorf(0, nil, `extra character "%c" (0x%02X) after top-level value`, c, c)
+		if typ == nodeType_number && c == 'E' {
+			return j, p.errorf(0, nil, ErrorType_InvalidLargeExp)
+		}
+		return j, p.errorf(0, nil, ErrorType_ExtraCharacterAfterRison, c)
 	}
 	return j, nil
 }
@@ -192,7 +217,7 @@ const (
 func (p *parser) readValue() (nodeType, error) {
 	c, ok := p.next()
 	if !ok {
-		return nodeType_invalid, p.errorf(0, nil, `empty expression`)
+		return nodeType_invalid, p.errorf(0, nil, ErrorType_EmptyString)
 	}
 
 	switch {
@@ -216,7 +241,7 @@ func (p *parser) readValue() (nodeType, error) {
 		return nodeType_string, nil
 	}
 
-	return nodeType_invalid, p.errorf(0, nil, `invalid character "%c" (0x%02X)`, c, c)
+	return nodeType_invalid, p.errorf(0, nil, ErrorType_InvalidCharacter, c)
 }
 
 func (p *parser) parseID() (bool, error) {
@@ -245,7 +270,7 @@ func (p *parser) parseID() (bool, error) {
 	}
 	j, err := json.Marshal(string(id))
 	if err != nil {
-		return false, p.errorf(0, err, `id "%s" cannot be converted to JSON`, string(id))
+		return false, p.errorf(0, err, ErrorType_Internal, fmt.Sprintf(`id "%s" cannot be converted to JSON`, string(id)))
 	}
 	p.index = i
 	p.buffer.Write(j)
@@ -255,7 +280,7 @@ func (p *parser) parseID() (bool, error) {
 func (p *parser) parseSpecial() (nodeType, error) {
 	s := p.string
 	if len(s) <= p.index {
-		return nodeType_invalid, p.errorf(0, nil, `"!" at end of input`)
+		return nodeType_invalid, p.errorf(0, nil, ErrorType_MissingCharacterAfterEscape)
 	}
 	c := s[p.index]
 	p.index++
@@ -272,7 +297,7 @@ func (p *parser) parseSpecial() (nodeType, error) {
 	case '(':
 		return nodeType_array, p.parseArray()
 	}
-	return nodeType_invalid, p.errorf(-1, nil, `unknown literal "!%c"`, c)
+	return nodeType_invalid, p.errorf(-1, nil, ErrorType_InvalidLiteral, c)
 }
 
 func (p *parser) parseArray() error {
@@ -281,18 +306,18 @@ func (p *parser) parseArray() error {
 	for {
 		c, ok := p.next()
 		if !ok {
-			return p.errorf(0, nil, `unmatched "!("`)
+			return p.errorf(0, nil, ErrorType_UnmatchedPair, "!(")
 		}
 		if c == ')' {
 			break
 		}
 		if notFirst {
 			if c != ',' {
-				return p.errorf(-1, nil, `missing ","`)
+				return p.errorf(-1, nil, ErrorType_MissingCharacter, ',')
 			}
 			p.buffer.WriteByte(',')
 		} else if c == ',' {
-			return p.errorf(-1, nil, `extra ","`)
+			return p.errorf(-1, nil, ErrorType_ExtraCharacter, ',')
 		} else {
 			p.index--
 		}
@@ -312,39 +337,39 @@ func (p *parser) parseObject() error {
 	for {
 		c, ok := p.next()
 		if !ok {
-			return p.errorf(0, nil, `unmatched "("`)
+			return p.errorf(0, nil, ErrorType_UnmatchedPair, "(")
 		}
 		if c == ')' {
 			break
 		}
 		if notFirst {
 			if c != ',' {
-				return p.errorf(-1, nil, `missing ","`)
+				return p.errorf(-1, nil, ErrorType_MissingCharacter, ',')
 			}
 			p.buffer.WriteByte(',')
 		} else if c == ',' {
-			return p.errorf(-1, nil, `extra ","`)
+			return p.errorf(-1, nil, ErrorType_ExtraCharacter, ',')
 		} else {
 			p.index--
 		}
 		typ, err := p.readValue()
 		if err != nil {
-			return p.errorf(0, err, `invalid object key`)
+			return err
 		}
 		if typ != nodeType_string {
-			return p.errorf(-1, nil, `object key must be a string`)
+			return p.errorf(-1, nil, ErrorType_InvalidTypeOfObjectKey)
 		}
 		c, ok = p.next()
 		if !ok {
-			return p.errorf(0, nil, `missing ":"`)
+			return p.errorf(0, nil, ErrorType_MissingCharacter, ':')
 		}
 		if c != ':' {
-			return p.errorf(-1, nil, `missing ":" or invalid type of object key`)
+			return p.errorf(-1, nil, ErrorType_MissingCharacter, ':')
 		}
 		p.buffer.WriteByte(':')
 		_, err = p.readValue()
 		if err != nil {
-			return p.errorf(0, err, `invalid object value`)
+			return err
 		}
 		notFirst = true
 	}
@@ -360,7 +385,7 @@ func (p *parser) parseQuotedString() error {
 	for {
 		if len(s) <= i {
 			p.index = i
-			return p.errorf(0, nil, `unmatched "'"`)
+			return p.errorf(0, nil, ErrorType_UnmatchedPair, "'")
 		}
 		c := s[i]
 		i++
@@ -377,7 +402,7 @@ func (p *parser) parseQuotedString() error {
 				result = append(result, c)
 			} else {
 				p.index = i
-				return p.errorf(0, nil, `invalid string escape "!%c"`, c)
+				return p.errorf(0, nil, ErrorType_InvalidStringEscape, c)
 			}
 			start = i
 		}
@@ -388,7 +413,7 @@ func (p *parser) parseQuotedString() error {
 	p.index = i
 	j, err := json.Marshal(string(result))
 	if err != nil {
-		return p.errorf(0, err, `invalid string "%s"`, string(result))
+		return p.errorf(0, err, ErrorType_Internal, fmt.Sprintf(`invalid string "%s"`, string(result)))
 	}
 	p.buffer.Write(j)
 	return nil
@@ -448,16 +473,16 @@ func (p *parser) parseNumber() error {
 	p.index = i
 	t := s[start:i]
 	if string(t) == "-" {
-		return p.errorf(0, nil, `invalid number`)
+		return p.errorf(0, nil, ErrorType_InvalidNumber, "-")
 	}
 	var result interface{}
 	err := json.Unmarshal(t, &result)
 	if err != nil {
-		return p.errorf(0, err, `invalid number "%s"`, string(t))
+		return p.errorf(0, err, ErrorType_InvalidNumber, string(t))
 	}
 	j, err := json.Marshal(result)
 	if err != nil {
-		return p.errorf(0, err, `invalid number "%s"`, string(t))
+		return p.errorf(0, err, ErrorType_InvalidNumber, string(t))
 	}
 	p.buffer.Write(j)
 	return nil
