@@ -72,6 +72,16 @@ func ExampleQuote() {
 	fmt.Println(rison.QuoteString(s))
 	// Output: ~!*()-_.,:@$'/+%22%23%25%26%2B%3B%3C%3D%3E%3F%5B%5C%5D%5E%60%7B%7C%7D
 }
+
+func ExampleErrorsInMultipleLanguages() {
+	r := "!("
+	_, err := rison.ToJSON([]byte(r), rison.Rison)
+	fmt.Println(err.(*rison.ParseError).ErrorInLang("en"))
+	fmt.Println(err.(*rison.ParseError).ErrorInLang("ja"))
+	// Output:
+	// unmatched "!(" (at the end of string "!(" -> EOS)
+	// "!(" が閉じていません (場所: 文字列終端: "!(" → EOS)
+}
 ```
 
 ## Descriptions

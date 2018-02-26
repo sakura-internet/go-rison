@@ -43,3 +43,13 @@ func ExampleToJSON() {
 	fmt.Printf("%s\n", string(j))
 	// Output: [1,2.3,"str","ing","true","nil",{"a":"b"},[7,8,9]]
 }
+
+func ExampleErrorsInMultipleLanguages() {
+	r := "!("
+	_, err := rison.ToJSON([]byte(r), rison.Rison)
+	fmt.Println(err.(*rison.ParseError).ErrorInLang("en"))
+	fmt.Println(err.(*rison.ParseError).ErrorInLang("ja"))
+	// Output:
+	// unmatched "!(" (at the end of string "!(" -> EOS)
+	// "!(" が閉じていません (場所: 文字列終端: "!(" → EOS)
+}
