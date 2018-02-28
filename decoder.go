@@ -314,7 +314,7 @@ func (p *parser) parseObject() error {
 	return nil
 }
 
-func (p *parser) q() error {
+func (p *parser) parseQuotedString() error {
 	s := p.string
 	i := p.index
 	start := i
