@@ -4,7 +4,7 @@ package errtype
 type ErrType int
 
 const (
-	// Internal is an error indicating an internal error occured.
+	// Internal is an error indicating an internal error occurred.
 	Internal ErrType = iota
 	// Encoding is an error indicating encoding failed.
 	Encoding
