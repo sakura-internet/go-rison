@@ -44,7 +44,7 @@ func ExampleToJSON() {
 	// Output: [1,2.3,"str","ing","true","nil",{"a":"b"},[7,8,9]]
 }
 
-func ExampleErrorsInMultipleLanguages() {
+func ExampleParseError_ErrorInLang() {
 	r := "!("
 	_, err := rison.ToJSON([]byte(r), rison.Rison)
 	fmt.Println(err.(*rison.ParseError).ErrorInLang("en"))
