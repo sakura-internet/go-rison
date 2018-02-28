@@ -3,9 +3,6 @@
   "Vendor": true,
   "Skip": ["vendor", "pb"],
   "Exclude": [
-    "(comment on exported \\w+ \\S+|package comment) should be of the form",
-    "exported const \\S+ should have comment \\(or a comment on this block\\) or be unexported",
-    "don't use underscores in Go names; const \\S+ should be \\S+",
-    "if block ends with a return statement, so drop this else and outdent its block"
+    "exported const \\S+ should have comment \\(or a comment on this block\\) or be unexported"
   ]
 }
