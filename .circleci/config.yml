@@ -20,16 +20,14 @@ jobs:
     working_directory: /go/src/github.com/sakura-internet/go-rison
     steps:
       - checkout
-
-      # specify any bash command here prefixed with `run: `
       - run:
-          name: setup
+          name: Setup tools
           command: go get -u github.com/alecthomas/gometalinter && gometalinter --install
       - run:
-          name: lint
+          name: Lint
           command: gometalinter --config=.gometalinter.json ./...
       - run:
-          name: test
+          name: Test
           command: go test -v -coverprofile=/tmp/coverage.out . && go tool cover -html=/tmp/coverage.out -o /tmp/coverage.html
       - store_artifacts:
           path: /tmp/coverage.out
