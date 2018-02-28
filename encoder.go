@@ -37,7 +37,38 @@ type encoder struct {
 	buffer *bytes.Buffer
 }
 
-func (e *encoder) encode(data []byte, m Mode) ([]byte, error) {
+func checkKindMatchesMode(kind reflect.Kind, mode Mode) error {
+	switch mode {
+	case ORison:
+		if kind != reflect.Map {
+			return fmt.Errorf("only a struct or a map[string] can be encoded to the O-Rison")
+		}
+	case ARison:
+		if !(kind == reflect.Slice || kind == reflect.Array) {
+			return fmt.Errorf("only a slice or an array can be encoded to the A-Rison")
+		}
+	}
+	return nil
+}
+
+func convertRisonToMode(r []byte, mode Mode) ([]byte, error) {
+	n := len(r)
+	switch mode {
+	case ORison:
+		if !(3 <= n && r[0] == '(' && r[n-1] == ')') {
+			return nil, fmt.Errorf("failed to encode the value to the O-Rison")
+		}
+		r = r[1 : n-1]
+	case ARison:
+		if !(4 <= n && r[0] == '!' && r[1] == '(' && r[n-1] == ')') {
+			return nil, fmt.Errorf("failed to encode the value to the A-Rison")
+		}
+		r = r[2 : n-1]
+	}
+	return r, nil
+}
+
+func (e *encoder) encode(data []byte, mode Mode) ([]byte, error) {
 	e.buffer = bytes.NewBuffer([]byte{})
 
 	var v interface{}
@@ -46,16 +77,9 @@ func (e *encoder) encode(data []byte, m Mode) ([]byte, error) {
 		return nil, err
 	}
 	vv := reflect.ValueOf(v)
-	kind := vv.Kind()
-	switch m {
-	case ORison:
-		if kind != reflect.Map {
-			return nil, fmt.Errorf("only a struct or a map[string] can be encoded to the O-Rison")
-		}
-	case ARison:
-		if !(kind == reflect.Slice || kind == reflect.Array) {
-			return nil, fmt.Errorf("only a slice or an array can be encoded to the A-Rison")
-		}
+	err = checkKindMatchesMode(vv.Kind(), mode)
+	if err != nil {
+		return nil, err
 	}
 
 	if bytes.Equal(data, []byte("null")) {
@@ -72,22 +96,7 @@ func (e *encoder) encode(data []byte, m Mode) ([]byte, error) {
 
 	r := e.buffer.Bytes()
 	e.buffer = nil
-	n := len(r)
-
-	switch m {
-	case ORison:
-		if !(3 <= n && r[0] == '(' && r[n-1] == ')') {
-			return nil, fmt.Errorf("failed to encode the value to the O-Rison")
-		}
-		r = r[1 : n-1]
-	case ARison:
-		if !(4 <= n && r[0] == '!' && r[1] == '(' && r[n-1] == ')') {
-			return nil, fmt.Errorf("failed to encode the value to the A-Rison")
-		}
-		r = r[2 : n-1]
-	}
-
-	return r, nil
+	return convertRisonToMode(r, mode)
 }
 
 func idOk(s string) bool {
@@ -131,96 +140,110 @@ func (e *encoder) writeString(v reflect.Value) bool {
 	return true
 }
 
+func (e *encoder) encodeBool(path string, v reflect.Value) error {
+	if !v.CanInterface() {
+		return fmt.Errorf("internal error")
+	}
+	b, ok := v.Interface().(bool)
+	if !ok {
+		return fmt.Errorf("internal error")
+	}
+	if b {
+		e.buffer.WriteString("!t")
+	} else {
+		e.buffer.WriteString("!f")
+	}
+	return nil
+}
+
+func (e *encoder) encodeNumber(path string, v reflect.Value) error {
+	if !v.CanInterface() {
+		return fmt.Errorf("internal error")
+	}
+	j, err := json.Marshal(v.Interface())
+	if err != nil {
+		return err
+	}
+	j = bytes.Replace(j, []byte{'+'}, []byte{}, -1)
+	e.buffer.Write(j)
+	return nil
+}
+
+func (e *encoder) encodeMap(path string, v reflect.Value) error {
+	e.buffer.WriteByte('(')
+	keys := v.MapKeys()
+	sort.Slice(keys, func(i, j int) bool {
+		if !keys[i].CanInterface() {
+			return false
+		}
+		ki, ok := keys[i].Interface().(string)
+		if !ok {
+			return false
+		}
+		if !keys[j].CanInterface() {
+			return true
+		}
+		kj, ok := keys[j].Interface().(string)
+		if !ok {
+			return true
+		}
+		return ki < kj
+	})
+	for i, k := range keys {
+		if 0 < i {
+			e.buffer.WriteByte(',')
+		}
+		if !e.writeString(k) {
+			return fmt.Errorf(`invalid key %+v`, k)
+		}
+		e.buffer.WriteByte(':')
+		err := e.encodeValue(path+"."+k.Interface().(string), v.MapIndex(k))
+		if err != nil {
+			return err
+		}
+	}
+	e.buffer.WriteByte(')')
+	return nil
+}
+
+func (e *encoder) encodeArray(path string, v reflect.Value) error {
+	e.buffer.WriteString("!(")
+	for i := 0; i < v.Len(); i++ {
+		if 0 < i {
+			e.buffer.WriteByte(',')
+		}
+		err := e.encodeValue(fmt.Sprintf("%s[%d]", path, i), v.Index(i))
+		if err != nil {
+			return err
+		}
+	}
+	e.buffer.WriteByte(')')
+	return nil
+}
+
 func (e *encoder) encodeValue(path string, v reflect.Value) error {
 	var errDetail error
-encodeValueError:
+
 	switch v.Kind() {
 
 	case reflect.Bool:
-		if !v.CanInterface() {
-			break
-		}
-		b, ok := v.Interface().(bool)
-		if !ok {
-			break
-		}
-		if b {
-			e.buffer.WriteString("!t")
-		} else {
-			e.buffer.WriteString("!f")
-		}
-		return nil
+		errDetail = e.encodeBool(path, v)
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Float32, reflect.Float64:
-		if !v.CanInterface() {
-			break
-		}
-		j, err := json.Marshal(v.Interface())
-		if err != nil {
-			errDetail = err
-			break
-		}
-		j = bytes.Replace(j, []byte{'+'}, []byte{}, -1)
-		e.buffer.Write(j)
-		return nil
+		errDetail = e.encodeNumber(path, v)
 
 	case reflect.String:
-		if e.writeString(v) {
-			return nil
+		if !e.writeString(v) {
+			errDetail = fmt.Errorf("internal error")
 		}
 
 	case reflect.Map:
-		e.buffer.WriteByte('(')
-		keys := v.MapKeys()
-		sort.Slice(keys, func(i, j int) bool {
-			if !keys[i].CanInterface() {
-				return false
-			}
-			ki, ok := keys[i].Interface().(string)
-			if !ok {
-				return false
-			}
-			if !keys[j].CanInterface() {
-				return true
-			}
-			kj, ok := keys[j].Interface().(string)
-			if !ok {
-				return true
-			}
-			return ki < kj
-		})
-		for i, k := range keys {
-			if 0 < i {
-				e.buffer.WriteByte(',')
-			}
-			if !e.writeString(k) {
-				errDetail = fmt.Errorf(`invalid key %+v`, k)
-				break encodeValueError
-			}
-			e.buffer.WriteByte(':')
-			err := e.encodeValue(path+"."+k.Interface().(string), v.MapIndex(k))
-			if err != nil {
-				return err
-			}
-		}
-		e.buffer.WriteByte(')')
-		return nil
+		errDetail = e.encodeMap(path, v)
 
 	case reflect.Slice, reflect.Array:
-		e.buffer.WriteString("!(")
-		for i := 0; i < v.Len(); i++ {
-			if 0 < i {
-				e.buffer.WriteByte(',')
-			}
-			err := e.encodeValue(fmt.Sprintf("%s[%d]", path, i), v.Index(i))
-			if err != nil {
-				return err
-			}
-		}
-		e.buffer.WriteByte(')')
-		return nil
+		errDetail = e.encodeArray(path, v)
 
 	case reflect.Ptr, reflect.Interface:
 		if v.IsNil() {
@@ -230,15 +253,16 @@ encodeValueError:
 		return e.encodeValue(path, v.Elem())
 	}
 
+	if errDetail == nil {
+		return nil
+	}
+
 	if path == "" {
 		path = "."
 	}
 	var vi interface{} = v
 	if v.IsValid() && v.CanInterface() {
 		vi = v.Interface()
-	}
-	if errDetail == nil || reflect.ValueOf(errDetail).IsNil() {
-		return fmt.Errorf("non-encodable %s value at %s in %+v", v.Kind(), path, vi)
 	}
 	return fmt.Errorf("non-encodable %s value at %s in %+v: %s", v.Kind(), path, vi, errDetail.Error())
 }

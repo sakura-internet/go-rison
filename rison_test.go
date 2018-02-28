@@ -144,9 +144,37 @@ var invalidEncodeCases = []interface{}{
 func dumpValue(v interface{}) string {
 	j, err := json.Marshal(v)
 	if err != nil {
-		return fmt.Sprintf("%+v", v)
+		return fmt.Sprintf("%#v", v)
 	}
 	return string(j)
+}
+
+func testDecodeEncodeImpl(t *testing.T, object interface{}, r, j string, mode Mode) {
+	switch mode {
+	case ORison:
+		r = r[1 : len(r)-1]
+	case ARison:
+		r = r[2 : len(r)-1]
+	}
+
+	decoded, err := Decode([]byte(r), mode)
+	if err != nil {
+		t.Errorf("decoding %s : want %s, got error `%s`", r, j, err.Error())
+	} else if !reflect.DeepEqual(object, decoded) {
+		t.Errorf("decoding %s : want %s, got %s", r, j, dumpValue(decoded))
+	}
+
+	encoded, err := Encode(object, mode)
+	if err != nil {
+		t.Errorf("encoding %s : want %s, got error `%s`", j, r, err.Error())
+	} else {
+		redecoded, err := Decode(encoded, mode)
+		if err != nil {
+			t.Errorf("encoding %s : want %s, got %s and error `%s`", j, r, string(encoded), err.Error())
+		} else if !reflect.DeepEqual(object, redecoded) {
+			t.Errorf("encoding %s : want %s, got %s", j, r, string(encoded))
+		}
+	}
 }
 
 func TestDecodeEncode(t *testing.T) {
@@ -167,31 +195,7 @@ func TestDecodeEncode(t *testing.T) {
 		}
 
 		for _, m := range modes {
-			r2 := r
-			switch m {
-			case ORison:
-				r2 = r[1 : n-1]
-			case ARison:
-				r2 = r[2 : n-1]
-			}
-			decoded, err := Decode([]byte(r2), m)
-			if err != nil {
-				t.Errorf("decoding %s : want %s, got error `%s`", r2, j, err.Error())
-			} else if !reflect.DeepEqual(object, decoded) {
-				t.Errorf("decoding %s : want %s, got %s", r2, j, dumpValue(decoded))
-			}
-
-			encoded, err := Encode(object, m)
-			if err != nil {
-				t.Errorf("encoding %s : want %s, got error `%s`", j, r2, err.Error())
-			} else {
-				redecoded, err := Decode(encoded, m)
-				if err != nil {
-					t.Errorf("encoding %s : want %s, got %s and error `%s`", j, r2, string(encoded), err.Error())
-				} else if !reflect.DeepEqual(object, redecoded) {
-					t.Errorf("encoding %s : want %s, got %s", j, r2, string(encoded))
-				}
-			}
+			testDecodeEncodeImpl(t, object, r, j, m)
 		}
 	}
 }
@@ -253,7 +257,9 @@ func TestEncodeErrors(t *testing.T) {
 	for _, v := range invalidEncodeCases {
 		encoded, err := Encode(v, Rison)
 		if err == nil {
-			t.Errorf("encoding %+v : want an error, got %s", v, string(encoded))
+			t.Errorf("encoding %#v : want an error, got %s", v, string(encoded))
+		} else {
+			fmt.Printf("%#v\n\t\t%s\n", v, err.Error())
 		}
 	}
 }
@@ -263,7 +269,7 @@ func TestEncodeORisonError(t *testing.T) {
 	for _, v := range cases {
 		encoded, err := Encode(v, ORison)
 		if err == nil {
-			t.Errorf("encoding %+v : want an error, got %s", v, string(encoded))
+			t.Errorf("encoding %#v : want an error, got %s", v, string(encoded))
 		}
 	}
 }
@@ -273,7 +279,7 @@ func TestEncodeARisonError(t *testing.T) {
 	for _, v := range cases {
 		encoded, err := Encode(v, ARison)
 		if err == nil {
-			t.Errorf("encoding %+v : want an error, got %s", v, string(encoded))
+			t.Errorf("encoding %#v : want an error, got %s", v, string(encoded))
 		}
 	}
 }

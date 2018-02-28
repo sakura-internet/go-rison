@@ -1,5 +1,6 @@
 {
-  "Enable": ["vet", "golint", "goimports"],
+  "Enable": ["vet", "golint", "goimports", "gocyclo"],
+  "Cyclo": 15,
   "Vendor": true,
   "Skip": ["vendor", "pb"],
   "Exclude": [
