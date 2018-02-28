@@ -86,15 +86,29 @@ var invalidDecodeCases = []interface{}{
 	"(,)",
 	"(foo:1,)",
 	"(,bar:2)",
+	"(baz!:1)",
+	"(qux:1!)",
 	"(1not:'id')",
+	"(!t:1)",
+	"(!n:1)",
 
 	// arrays
 	"name:hoge,plan:!(1,2,3),availability~:disabled,size_gib-GE:100,size_gib~GE:1024,tags:stable,tags~:!(deprecated,dev),", // raises irrelevant error message
+	"!(",
+	"!(1",
+	"!(1,",
+	"!())",
+	"!(,",
+	"!(,)",
+	"!(1,)",
+	"!(,2)",
 
 	// strings
 	"'",
 	"'abc",
 	"'a!'!'",
+	"'!",
+	"'!x",
 
 	// numbers
 	"4abc",
@@ -116,6 +130,7 @@ var invalidDecodeCases = []interface{}{
 	"1.5E2",
 	"1.5E+2",
 	"1.5E-2",
+	"1e9999999999999999",
 
 	// escape sequences
 	"!",
@@ -149,52 +164,77 @@ func dumpValue(v interface{}) string {
 	return string(j)
 }
 
-func testDecodeEncodeImpl(t *testing.T, object interface{}, r, j string, mode Mode) {
+func isObjectRison(r []byte) bool {
+	n := len(r)
+	return 3 <= n && r[0] == '(' && r[n-1] == ')'
+}
+
+func isArrayRison(r []byte) bool {
+	n := len(r)
+	return 4 <= n && r[0] == '!' && r[1] == '(' && r[n-1] == ')'
+}
+
+func testModes(r []byte) []Mode {
+	modes := []Mode{Rison}
+	if isObjectRison(r) {
+		modes = append(modes, ORison)
+	}
+	if isArrayRison(r) {
+		modes = append(modes, ARison)
+	}
+	return modes
+}
+
+func mustConvertMode(r []byte, mode Mode) []byte {
 	switch mode {
 	case ORison:
+		if !isObjectRison(r) {
+			panic("must be a object")
+		}
 		r = r[1 : len(r)-1]
 	case ARison:
+		if !isArrayRison(r) {
+			panic("must be an array")
+		}
 		r = r[2 : len(r)-1]
 	}
+	return r
+}
 
-	decoded, err := Decode([]byte(r), mode)
+func testDecodeEncodeImpl(t *testing.T, object interface{}, r, j []byte, mode Mode) {
+	r = mustConvertMode(r, mode)
+	rs := string(r)
+	js := string(j)
+	decoded, err := Decode(r, mode)
 	if err != nil {
-		t.Errorf("decoding %s : want %s, got error `%s`", r, j, err.Error())
+		t.Errorf("decoding %s : want %s, got error `%s`", rs, js, err.Error())
 	} else if !reflect.DeepEqual(object, decoded) {
-		t.Errorf("decoding %s : want %s, got %s", r, j, dumpValue(decoded))
+		t.Errorf("decoding %s : want %s, got %s", rs, js, dumpValue(decoded))
 	}
 
 	encoded, err := Encode(object, mode)
 	if err != nil {
-		t.Errorf("encoding %s : want %s, got error `%s`", j, r, err.Error())
+		t.Errorf("encoding %s : want %s, got error `%s`", js, rs, err.Error())
 	} else {
 		redecoded, err := Decode(encoded, mode)
 		if err != nil {
-			t.Errorf("encoding %s : want %s, got %s and error `%s`", j, r, string(encoded), err.Error())
+			t.Errorf("encoding %s : want %s, got %s and error `%s`", js, rs, string(encoded), err.Error())
 		} else if !reflect.DeepEqual(object, redecoded) {
-			t.Errorf("encoding %s : want %s, got %s", j, r, string(encoded))
+			t.Errorf("encoding %s : want %s, got %s", js, rs, string(encoded))
 		}
 	}
 }
 
 func TestDecodeEncode(t *testing.T) {
-	for r, j := range testCases {
+	for rs, js := range testCases {
+		r := []byte(rs)
+		j := []byte(js)
 		var object interface{}
-		err := json.Unmarshal([]byte(j), &object)
+		err := json.Unmarshal(j, &object)
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		modes := []Mode{Rison}
-		n := len(r)
-		if 3 <= n && r[0] == '(' && r[n-1] == ')' {
-			modes = append(modes, ORison)
-		}
-		if 4 <= n && r[0] == '!' && r[1] == '(' && r[n-1] == ')' {
-			modes = append(modes, ARison)
-		}
-
-		for _, m := range modes {
+		for _, m := range testModes(r) {
 			testDecodeEncodeImpl(t, object, r, j, m)
 		}
 	}
@@ -233,23 +273,30 @@ func indent(s string) string {
 	return t + strings.Replace(s, "\n", "\n"+t, -1)
 }
 
+func testDecodeErrorsImpl(t *testing.T, r []byte, mode Mode) {
+	r = mustConvertMode(r, mode)
+	decoded, err := Decode(r, mode)
+	if err == nil {
+		t.Errorf("decoding %s : want *ParseError, got %s", r, dumpValue(decoded))
+	}
+	e, ok := err.(*ParseError)
+	if !ok {
+		t.Errorf("decoding %s : want *ParseError, got else", r)
+	}
+	fmt.Printf(`"%s"`+"\n", string(r))
+	fmt.Println(indent(e.ErrorInLang("en")))
+	fmt.Println(indent(e.ErrorInLang("ja")))
+}
+
 func TestDecodeErrors(t *testing.T) {
 	for _, rs := range invalidDecodeCases {
 		r, ok := rs.([]byte)
 		if !ok {
 			r = []byte(rs.(string))
 		}
-		decoded, err := Decode(r, Rison)
-		if err == nil {
-			t.Errorf("decoding %s : want *ParseError, got %s", r, dumpValue(decoded))
+		for _, m := range testModes(r) {
+			testDecodeErrorsImpl(t, r, m)
 		}
-		e, ok := err.(*ParseError)
-		if !ok {
-			t.Errorf("decoding %s : want *ParseError, got else", r)
-		}
-		fmt.Printf(`"%s"`+"\n", string(r))
-		fmt.Println(indent(e.ErrorInLang("en")))
-		fmt.Println(indent(e.ErrorInLang("ja")))
 	}
 }
 

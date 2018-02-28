@@ -21,12 +21,16 @@ func TestQuoteString(t *testing.T) {
 		buf.WriteByte(i)
 	}
 	s := buf.String()
-	q := rison.QuoteString(s)
-	u, err := url.QueryUnescape(q)
+	qs := rison.QuoteString(s)
+	qb := rison.Quote([]byte(s))
+	if string(qb) != qs {
+		t.Errorf("unescaping %s .. : want %s, got %s", qs, string(qb))
+	}
+	u, err := url.QueryUnescape(qs)
 	if err != nil {
-		t.Errorf("unescaping %s .. : want %s, got error `%s`", q, s, err.Error())
+		t.Errorf("unescaping %s .. : want %s, got error `%s`", qs, s, err.Error())
 	}
 	if u != s {
-		t.Errorf("unescaping %s .. : want %s, got %s", q, s, u)
+		t.Errorf("unescaping %s .. : want %s, got %s", qs, s, u)
 	}
 }

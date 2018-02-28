@@ -314,7 +314,7 @@ func (p *parser) parseObject() error {
 	return nil
 }
 
-func (p *parser) parseQuotedString() error {
+func (p *parser) q() error {
 	s := p.string
 	i := p.index
 	start := i
@@ -332,6 +332,10 @@ func (p *parser) parseQuotedString() error {
 		if c == '!' {
 			if start < i-1 {
 				result = append(result, s[start:i-1]...)
+			}
+			if len(s) <= i {
+				p.index = i
+				return p.errorf(0, nil, errtype.MissingCharacterAfterEscape)
 			}
 			c = s[i]
 			i++
