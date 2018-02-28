@@ -24,4 +24,4 @@ jobs:
       # specify any bash command here prefixed with `run: `
       - run: go get -u github.com/alecthomas/gometalinter && gometalinter --install
       - run: gometalinter --config=.gometalinter.json ./...
-      - run: go test -v -coverprofile="$CIRCLE_ARTIFACTS/coverage.out" ./... && go tool cover -html="$CIRCLE_ARTIFACTS/coverage.out" -o "$CIRCLE_ARTIFACTS/coverage.html"
+      - run: go test -v -coverprofile="$CIRCLE_ARTIFACTS/coverage.out" . && go tool cover -html="$CIRCLE_ARTIFACTS/coverage.out" -o "$CIRCLE_ARTIFACTS/coverage.html"
