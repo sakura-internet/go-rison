@@ -31,7 +31,7 @@ jobs:
           command: go test -v -coverprofile=/tmp/coverage.out . && go tool cover -html=/tmp/coverage.out -o /tmp/coverage.html
       - run:
           name: Upload code coverage result
-          command: bash <(curl -s https://codecov.io/bash)
+          command: bash <(curl -s https://codecov.io/bash) -f /tmp/coverage.out
       - store_artifacts:
           path: /tmp/coverage.out
       - store_artifacts:
