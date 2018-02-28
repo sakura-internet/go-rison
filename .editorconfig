@@ -4,6 +4,6 @@ root = true
 indent_style = tab
 indent_size = 4
 
-[*.{md,json}]
+[*.{md,yml,json}]
 indent_style = space
 indent_size = 2
