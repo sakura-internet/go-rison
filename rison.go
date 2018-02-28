@@ -20,7 +20,10 @@ const (
 type Mode int
 
 const (
+	// Rison is the encoding/decoding mode covering all types.
 	Rison Mode = iota
+	// ORison is the special encoding/decoding mode for object type.
 	ORison
+	// ARison is the special encoding/decoding mode for array type.
 	ARison
 )
