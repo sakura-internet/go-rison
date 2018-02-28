@@ -24,7 +24,7 @@ func Marshal(v interface{}, m Mode) ([]byte, error) {
 // FromJSON parses the JSON-encoded data and returns the
 // Rison-encoded data that expresses the equal value.
 func FromJSON(data []byte, m Mode) ([]byte, error) {
-	return (&encoder{Mode: m}).encode(data, m)
+	return (&encoder{Mode: m}).encode(data)
 }
 
 // Encode is an alias of Marshal.
@@ -68,7 +68,7 @@ func convertRisonToMode(r []byte, mode Mode) ([]byte, error) {
 	return r, nil
 }
 
-func (e *encoder) encode(data []byte, mode Mode) ([]byte, error) {
+func (e *encoder) encode(data []byte) ([]byte, error) {
 	e.buffer = bytes.NewBuffer([]byte{})
 
 	var v interface{}
@@ -77,7 +77,7 @@ func (e *encoder) encode(data []byte, mode Mode) ([]byte, error) {
 		return nil, err
 	}
 	vv := reflect.ValueOf(v)
-	err = checkKindMatchesMode(vv.Kind(), mode)
+	err = checkKindMatchesMode(vv.Kind(), e.Mode)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (e *encoder) encode(data []byte, mode Mode) ([]byte, error) {
 
 	r := e.buffer.Bytes()
 	e.buffer = nil
-	return convertRisonToMode(r, mode)
+	return convertRisonToMode(r, e.Mode)
 }
 
 func idOk(s string) bool {
@@ -251,6 +251,9 @@ func (e *encoder) encodeValue(path string, v reflect.Value) error {
 			return nil
 		}
 		return e.encodeValue(path, v.Elem())
+
+	default:
+		errDetail = fmt.Errorf("%s is non-supported kind", v.Kind())
 	}
 
 	if errDetail == nil {

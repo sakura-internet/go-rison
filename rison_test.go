@@ -1,8 +1,10 @@
 package rison
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"reflect"
 	"strings"
 	"testing"
@@ -327,6 +329,71 @@ func TestEncodeARisonError(t *testing.T) {
 		encoded, err := Encode(v, ARison)
 		if err == nil {
 			t.Errorf("encoding %#v : want an error, got %s", v, string(encoded))
+		}
+	}
+}
+
+func TestQuoteString(t *testing.T) {
+	buf := bytes.NewBuffer([]byte{})
+	for i := byte(0); i < 128; i++ {
+		buf.WriteByte(i)
+	}
+	s := buf.String()
+	qs := QuoteString(s)
+	qb := Quote([]byte(s))
+	if string(qb) != qs {
+		t.Errorf("escaping %s .. : want %s, got %s", s, qs, string(qb))
+	}
+	u, err := url.QueryUnescape(qs)
+	if err != nil {
+		t.Errorf("unescaping %s .. : want %s, got error `%s`", qs, s, err.Error())
+	}
+	if u != s {
+		t.Errorf("unescaping %s .. : want %s, got %s", qs, s, u)
+	}
+}
+
+func TestFromJSONError(t *testing.T) {
+	j := []byte(`[`)
+	_, err := FromJSON(j, Rison)
+	if err == nil {
+		t.Errorf("FromJSON %s : want *ParseError, got nil", string(j))
+	}
+
+	j = []byte(`[]`)
+	_, err = FromJSON(j, ORison)
+	if err == nil {
+		t.Errorf("FromJSON %s : want *ParseError, got nil", string(j))
+	}
+
+	j = []byte(`{}`)
+	_, err = FromJSON(j, ARison)
+	if err == nil {
+		t.Errorf("FromJSON %s : want *ParseError, got nil", string(j))
+	}
+}
+
+func TestInvalidEncodeValue(t *testing.T) {
+	cases := []interface{}{
+		func() {},
+		uintptr(1),
+		[]interface{}{
+			func() {},
+		},
+		map[float64]interface{}{
+			.1: "",
+		},
+	}
+
+	e := &encoder{
+		buffer: bytes.NewBuffer([]byte{}),
+		Mode:   Rison,
+	}
+	for _, v := range cases {
+		vv := reflect.ValueOf(v)
+		err := e.encodeValue("", vv)
+		if err == nil {
+			t.Errorf("encodeValue %#v : want *ParseError, got nil", v)
 		}
 	}
 }
