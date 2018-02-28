@@ -24,7 +24,7 @@ func TestQuoteString(t *testing.T) {
 	qs := rison.QuoteString(s)
 	qb := rison.Quote([]byte(s))
 	if string(qb) != qs {
-		t.Errorf("unescaping %s .. : want %s, got %s", qs, string(qb))
+		t.Errorf("escaping %s .. : want %s, got %s", s, qs, string(qb))
 	}
 	u, err := url.QueryUnescape(qs)
 	if err != nil {
