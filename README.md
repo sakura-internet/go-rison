@@ -1,6 +1,6 @@
 # go-rison
 
-![CircleCI](https://circleci.com/gh/sakura-internet/go-rison/tree/master.svg?style=shield&circle-token=1e751b4de85836df4db87a736dc1e9ff208fbd12)
+[![CircleCI](https://circleci.com/gh/sakura-internet/go-rison/tree/master.svg?style=shield&circle-token=1e751b4de85836df4db87a736dc1e9ff208fbd12)](https://circleci.com/gh/sakura-internet/go-rison)
 [![Go Report Card](https://goreportcard.com/badge/github.com/sakura-internet/go-rison)](https://goreportcard.com/report/github.com/sakura-internet/go-rison)
 [![codecov.io](https://codecov.io/github/sakura-internet/go-rison/coverage.svg?branch=master)](https://codecov.io/github/sakura-internet/go-rison?branch=master)
 [![Godoc](https://godoc.org/github.com/sakura-internet/go-rison?status.svg)](http://godoc.org/github.com/sakura-internet/go-rison)
