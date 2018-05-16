@@ -4,6 +4,7 @@ import "testing"
 
 type errorInLang interface {
 	ErrorInLang(lang string) string
+	Langs() []string
 }
 
 func TestParseError_Error(t *testing.T) {

@@ -53,6 +53,8 @@ const (
 	errPosEllipsisRight
 )
 
+var errLangs = []string{"en", "ja"}
+
 var errPosDesc = map[string]map[errPos]string{
 	"en": {
 		errPosNear:          ` (at [%d] near %s"%s" -> "%s" -> "%s"%s)`,
@@ -85,6 +87,11 @@ type ParseError struct {
 
 func (e *ParseError) Error() string {
 	return e.ErrorInLang("en")
+}
+
+// Langs returns supported languages.
+func (e *ParseError) Langs() []string {
+	return errLangs
 }
 
 // ErrorInLang returns the error message in specified language.
