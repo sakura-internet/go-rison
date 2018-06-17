@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/sakura-internet/go-rison/errtype"
 )
 
 // Unmarshal parses the Rison-encoded data and stores the result
@@ -86,7 +84,7 @@ type parser struct {
 	buffer          *bytes.Buffer
 }
 
-func (p *parser) errorf(pos int, err error, typ errtype.ErrType, args ...interface{}) error {
+func (p *parser) errorf(pos int, err error, typ ErrType, args ...interface{}) error {
 	i := p.index
 	src := p.string
 	switch p.Mode {
@@ -109,7 +107,7 @@ func (p *parser) errorf(pos int, err error, typ errtype.ErrType, args ...interfa
 
 func (p *parser) parse(rison []byte) ([]byte, error) {
 	if !utf8.Valid(rison) {
-		return nil, p.errorf(0, nil, errtype.Encoding)
+		return nil, p.errorf(0, nil, EEncoding)
 	}
 
 	switch p.Mode {
@@ -132,9 +130,9 @@ func (p *parser) parse(rison []byte) ([]byte, error) {
 	if p.index < len(p.string) {
 		c := p.string[p.index]
 		if typ == nodeTypeNumber && c == 'E' {
-			return j, p.errorf(0, nil, errtype.InvalidLargeExp)
+			return j, p.errorf(0, nil, EInvalidLargeExp)
 		}
-		return j, p.errorf(0, nil, errtype.ExtraCharacterAfterRison, c)
+		return j, p.errorf(0, nil, EExtraCharacterAfterRison, c)
 	}
 	return j, nil
 }
@@ -154,7 +152,7 @@ const (
 func (p *parser) readValue() (nodeType, error) {
 	c, ok := p.next()
 	if !ok {
-		return nodeTypeInvalid, p.errorf(0, nil, errtype.EmptyString)
+		return nodeTypeInvalid, p.errorf(0, nil, EEmptyString)
 	}
 
 	switch {
@@ -178,7 +176,7 @@ func (p *parser) readValue() (nodeType, error) {
 		return nodeTypeString, nil
 	}
 
-	return nodeTypeInvalid, p.errorf(0, nil, errtype.InvalidCharacter, c)
+	return nodeTypeInvalid, p.errorf(0, nil, EInvalidCharacter, c)
 }
 
 func (p *parser) parseID() (bool, error) {
@@ -207,7 +205,7 @@ func (p *parser) parseID() (bool, error) {
 	}
 	j, err := json.Marshal(string(id))
 	if err != nil {
-		return false, p.errorf(0, err, errtype.Internal, fmt.Sprintf(`id "%s" cannot be converted to JSON`, string(id)))
+		return false, p.errorf(0, err, EInternal, fmt.Sprintf(`id "%s" cannot be converted to JSON`, string(id)))
 	}
 	p.index = i
 	p.buffer.Write(j)
@@ -217,7 +215,7 @@ func (p *parser) parseID() (bool, error) {
 func (p *parser) parseSpecial() (nodeType, error) {
 	s := p.string
 	if len(s) <= p.index {
-		return nodeTypeInvalid, p.errorf(0, nil, errtype.MissingCharacterAfterEscape)
+		return nodeTypeInvalid, p.errorf(0, nil, EMissingCharacterAfterEscape)
 	}
 	c := s[p.index]
 	p.index++
@@ -234,7 +232,7 @@ func (p *parser) parseSpecial() (nodeType, error) {
 	case '(':
 		return nodeTypeArray, p.parseArray()
 	}
-	return nodeTypeInvalid, p.errorf(-1, nil, errtype.InvalidLiteral, c)
+	return nodeTypeInvalid, p.errorf(-1, nil, EInvalidLiteral, c)
 }
 
 func (p *parser) parseArray() error {
@@ -243,18 +241,18 @@ func (p *parser) parseArray() error {
 	for {
 		c, ok := p.next()
 		if !ok {
-			return p.errorf(0, nil, errtype.UnmatchedPair, "!(")
+			return p.errorf(0, nil, EUnmatchedPair, "!(")
 		}
 		if c == ')' {
 			break
 		}
 		if notFirst {
 			if c != ',' {
-				return p.errorf(-1, nil, errtype.MissingCharacter, ',')
+				return p.errorf(-1, nil, EMissingCharacter, ',')
 			}
 			p.buffer.WriteByte(',')
 		} else if c == ',' {
-			return p.errorf(-1, nil, errtype.ExtraCharacter, ',')
+			return p.errorf(-1, nil, EExtraCharacter, ',')
 		} else {
 			p.index--
 		}
@@ -274,18 +272,18 @@ func (p *parser) parseObject() error {
 	for {
 		c, ok := p.next()
 		if !ok {
-			return p.errorf(0, nil, errtype.UnmatchedPair, "(")
+			return p.errorf(0, nil, EUnmatchedPair, "(")
 		}
 		if c == ')' {
 			break
 		}
 		if notFirst {
 			if c != ',' {
-				return p.errorf(-1, nil, errtype.MissingCharacter, ',')
+				return p.errorf(-1, nil, EMissingCharacter, ',')
 			}
 			p.buffer.WriteByte(',')
 		} else if c == ',' {
-			return p.errorf(-1, nil, errtype.ExtraCharacter, ',')
+			return p.errorf(-1, nil, EExtraCharacter, ',')
 		} else {
 			p.index--
 		}
@@ -294,14 +292,14 @@ func (p *parser) parseObject() error {
 			return err
 		}
 		if typ != nodeTypeString {
-			return p.errorf(-1, nil, errtype.InvalidTypeOfObjectKey)
+			return p.errorf(-1, nil, EInvalidTypeOfObjectKey)
 		}
 		c, ok = p.next()
 		if !ok {
-			return p.errorf(0, nil, errtype.MissingCharacter, ':')
+			return p.errorf(0, nil, EMissingCharacter, ':')
 		}
 		if c != ':' {
-			return p.errorf(-1, nil, errtype.MissingCharacter, ':')
+			return p.errorf(-1, nil, EMissingCharacter, ':')
 		}
 		p.buffer.WriteByte(':')
 		_, err = p.readValue()
@@ -322,7 +320,7 @@ func (p *parser) parseQuotedString() error {
 	for {
 		if len(s) <= i {
 			p.index = i
-			return p.errorf(0, nil, errtype.UnmatchedPair, "'")
+			return p.errorf(0, nil, EUnmatchedPair, "'")
 		}
 		c := s[i]
 		i++
@@ -335,7 +333,7 @@ func (p *parser) parseQuotedString() error {
 			}
 			if len(s) <= i {
 				p.index = i
-				return p.errorf(0, nil, errtype.MissingCharacterAfterEscape)
+				return p.errorf(0, nil, EMissingCharacterAfterEscape)
 			}
 			c = s[i]
 			i++
@@ -343,7 +341,7 @@ func (p *parser) parseQuotedString() error {
 				result = append(result, c)
 			} else {
 				p.index = i
-				return p.errorf(0, nil, errtype.InvalidStringEscape, c)
+				return p.errorf(0, nil, EInvalidStringEscape, c)
 			}
 			start = i
 		}
@@ -354,7 +352,7 @@ func (p *parser) parseQuotedString() error {
 	p.index = i
 	j, err := json.Marshal(string(result))
 	if err != nil {
-		return p.errorf(0, err, errtype.Internal, fmt.Sprintf(`invalid string "%s"`, string(result)))
+		return p.errorf(0, err, EInternal, fmt.Sprintf(`invalid string "%s"`, string(result)))
 	}
 	p.buffer.Write(j)
 	return nil
@@ -414,16 +412,16 @@ func (p *parser) parseNumber() error {
 	p.index = i
 	t := s[start:i]
 	if string(t) == "-" {
-		return p.errorf(0, nil, errtype.InvalidNumber, "-")
+		return p.errorf(0, nil, EInvalidNumber, "-")
 	}
 	var result interface{}
 	err := json.Unmarshal(t, &result)
 	if err != nil {
-		return p.errorf(0, err, errtype.InvalidNumber, string(t))
+		return p.errorf(0, err, EInvalidNumber, string(t))
 	}
 	j, err := json.Marshal(result)
 	if err != nil {
-		return p.errorf(0, err, errtype.InvalidNumber, string(t))
+		return p.errorf(0, err, EInvalidNumber, string(t))
 	}
 	p.buffer.Write(j)
 	return nil

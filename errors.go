@@ -2,42 +2,40 @@ package rison
 
 import (
 	"fmt"
-
-	"github.com/sakura-internet/go-rison/errtype"
 )
 
-var errorMessage = map[string]map[errtype.ErrType]string{
+var errorMessage = map[string]map[ErrType]string{
 	"en": {
-		errtype.Internal:                    `internal error: %s`,
-		errtype.Encoding:                    `Rison must be a valid UTF-8 string`,
-		errtype.EmptyString:                 `empty string`,
-		errtype.UnmatchedPair:               `unmatched "%s"`,
-		errtype.MissingCharacter:            `missing "%c"`,
-		errtype.MissingCharacterAfterEscape: `missing character after "!"`,
-		errtype.ExtraCharacter:              `extra character "%c"`,
-		errtype.ExtraCharacterAfterRison:    `extra character "%c" after valid Rison`,
-		errtype.InvalidLiteral:              `invalid literal "!%c"`,
-		errtype.InvalidCharacter:            `invalid character "%c"`,
-		errtype.InvalidTypeOfObjectKey:      `object key must be a string`,
-		errtype.InvalidStringEscape:         `invalid string escape "!%c"`,
-		errtype.InvalidNumber:               `invalid number "%s"`,
-		errtype.InvalidLargeExp:             `large case "E" for exponent cannot be used`,
+		EInternal:                    `internal error: %s`,
+		EEncoding:                    `Rison must be a valid UTF-8 string`,
+		EEmptyString:                 `empty string`,
+		EUnmatchedPair:               `unmatched "%s"`,
+		EMissingCharacter:            `missing "%c"`,
+		EMissingCharacterAfterEscape: `missing character after "!"`,
+		EExtraCharacter:              `extra character "%c"`,
+		EExtraCharacterAfterRison:    `extra character "%c" after valid Rison`,
+		EInvalidLiteral:              `invalid literal "!%c"`,
+		EInvalidCharacter:            `invalid character "%c"`,
+		EInvalidTypeOfObjectKey:      `object key must be a string`,
+		EInvalidStringEscape:         `invalid string escape "!%c"`,
+		EInvalidNumber:               `invalid number "%s"`,
+		EInvalidLargeExp:             `large case "E" for exponent cannot be used`,
 	},
 	"ja": {
-		errtype.Internal:                    `内部エラー: %s`,
-		errtype.Encoding:                    `Risonは正しいUTF-8文字列である必要があります`,
-		errtype.EmptyString:                 `文字列が空です`,
-		errtype.UnmatchedPair:               `"%s" が閉じていません`,
-		errtype.MissingCharacter:            `"%c" が必要です`,
-		errtype.MissingCharacterAfterEscape: `"!" の後に文字が必要です`,
-		errtype.ExtraCharacter:              `"%c" が余分です`,
-		errtype.ExtraCharacterAfterRison:    `正しいRisonの後に余分な文字 "%c" が見つかりました`,
-		errtype.InvalidLiteral:              `不正なリテラル "!%c" が見つかりました`,
-		errtype.InvalidCharacter:            `不正な文字 "%c" が見つかりました`,
-		errtype.InvalidTypeOfObjectKey:      `オブジェクトキーは文字列である必要があります`,
-		errtype.InvalidStringEscape:         `不正なエスケープ文字列 "!%c" が見つかりました`,
-		errtype.InvalidNumber:               `不正な数値 "%s" が見つかりました`,
-		errtype.InvalidLargeExp:             `指数表記に大文字の "E" は使用できません`,
+		EInternal:                    `内部エラー: %s`,
+		EEncoding:                    `Risonは正しいUTF-8文字列である必要があります`,
+		EEmptyString:                 `文字列が空です`,
+		EUnmatchedPair:               `"%s" が閉じていません`,
+		EMissingCharacter:            `"%c" が必要です`,
+		EMissingCharacterAfterEscape: `"!" の後に文字が必要です`,
+		EExtraCharacter:              `"%c" が余分です`,
+		EExtraCharacterAfterRison:    `正しいRisonの後に余分な文字 "%c" が見つかりました`,
+		EInvalidLiteral:              `不正なリテラル "!%c" が見つかりました`,
+		EInvalidCharacter:            `不正な文字 "%c" が見つかりました`,
+		EInvalidTypeOfObjectKey:      `オブジェクトキーは文字列である必要があります`,
+		EInvalidStringEscape:         `不正なエスケープ文字列 "!%c" が見つかりました`,
+		EInvalidNumber:               `不正な数値 "%s" が見つかりました`,
+		EInvalidLargeExp:             `指数表記に大文字の "E" は使用できません`,
 	},
 }
 
@@ -79,7 +77,7 @@ var errPosDesc = map[string]map[errPos]string{
 // ParseError is an error type to be raised by parser
 type ParseError struct {
 	Child error
-	Type  errtype.ErrType
+	Type  ErrType
 	Args  []interface{}
 	Src   []byte
 	Pos   int
@@ -137,7 +135,7 @@ func (e *ParseError) ErrorInLang(lang string) string {
 	if ok {
 		msg = fmt.Sprintf(msgfmt, e.Args...)
 	} else {
-		msg = fmt.Sprintf(msgdef[errtype.Internal], fmt.Sprintf("err=%d", int(e.Type)))
+		msg = fmt.Sprintf(msgdef[EInternal], fmt.Sprintf("err=%d", int(e.Type)))
 	}
 	result := msg + w
 	//if e.Child != nil {

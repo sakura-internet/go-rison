@@ -79,9 +79,15 @@ func ExampleQuote() {
 func ExampleParseError_ErrorInLang() {
 	r := "!("
 	_, err := rison.ToJSON([]byte(r), rison.Rison)
-	fmt.Println(err.(*rison.ParseError).ErrorInLang("en"))
-	fmt.Println(err.(*rison.ParseError).ErrorInLang("ja"))
+	e, _ := err.(interface {
+		ErrorInLang(lang string) string
+		Langs() []string
+	})
+	fmt.Println(strings.Join(e.Langs(), ", "))
+	fmt.Println(e.ErrorInLang("en"))
+	fmt.Println(e.ErrorInLang("ja"))
 	// Output:
+	// en, ja
 	// unmatched "!(" (at the end of string "!(" -> EOS)
 	// "!(" が閉じていません (場所: 文字列終端: "!(" → EOS)
 }
