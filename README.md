@@ -17,6 +17,8 @@ or guesswork.
 ## Examples
 
 ```go
+import "gopkg.in/sakura-internet/go-rison.v3"
+
 func ExampleDecode() {
 	r := "(id:example,str:'string',num:100,yes:!t,nil:!n,arr:!(1,2,3))"
 	v, _ := rison.Decode([]byte(r), rison.Rison)

@@ -3,7 +3,7 @@ package rison_test
 import (
 	"fmt"
 
-	rison "gopkg.in/sakura-internet/go-rison.v3"
+	"gopkg.in/sakura-internet/go-rison.v3"
 )
 
 func ExampleQuote() {
