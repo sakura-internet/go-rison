@@ -1,9 +1,9 @@
 # go-rison
 
 [![CircleCI](https://circleci.com/gh/sakura-internet/go-rison/tree/master.svg?style=shield&circle-token=1e751b4de85836df4db87a736dc1e9ff208fbd12)](https://circleci.com/gh/sakura-internet/go-rison)
-[![Go Report Card](https://goreportcard.com/badge/github.com/sakura-internet/go-rison)](https://goreportcard.com/report/github.com/sakura-internet/go-rison)
+[![Go Report Card](https://goreportcard.com/badge/gopkg.in/sakura-internet/go-rison.v3)](https://goreportcard.com/report/gopkg.in/sakura-internet/go-rison.v3)
 [![codecov.io](https://codecov.io/github/sakura-internet/go-rison/coverage.svg?branch=master)](https://codecov.io/github/sakura-internet/go-rison?branch=master)
-[![Godoc](https://godoc.org/github.com/sakura-internet/go-rison?status.svg)](http://godoc.org/github.com/sakura-internet/go-rison)
+[![Godoc](https://godoc.org/gopkg.in/sakura-internet/go-rison.v3?status.svg)](http://godoc.org/gopkg.in/sakura-internet/go-rison.v3)
 [![MIT License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
 
 Go port of [Rison](https://github.com/Nanonid/rison).

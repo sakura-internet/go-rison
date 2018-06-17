@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sakura-internet/go-rison"
+	rison "gopkg.in/sakura-internet/go-rison.v3"
 )
 
 func ExampleDecode() {

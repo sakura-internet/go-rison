@@ -17,7 +17,7 @@ jobs:
     #### expecting it in the form of
     ####   /go/src/github.com/circleci/go-tool
     ####   /go/src/bitbucket.org/circleci/go-tool
-    working_directory: /go/src/github.com/sakura-internet/go-rison
+    working_directory: /go/src/gopkg.in/sakura-internet/go-rison.v3
     steps:
       - checkout
       - run:
