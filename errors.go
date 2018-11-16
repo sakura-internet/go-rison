@@ -81,15 +81,21 @@ type ParseError struct {
 	Args  []interface{}
 	Src   []byte
 	Pos   int
+	lang  string
 }
 
 func (e *ParseError) Error() string {
-	return e.ErrorInLang("en")
+	return e.ErrorInLang(e.lang)
 }
 
 // Langs returns supported languages.
 func (e *ParseError) Langs() []string {
 	return errLangs
+}
+
+// Translate sets the language of the error message to be retrieved by Error().
+func (e *ParseError) Translate(lang string) {
+	e.lang = lang
 }
 
 // ErrorInLang returns the error message in specified language.
