@@ -79,15 +79,23 @@ func ExampleQuote() {
 }
 
 func ExampleParseError_ErrorInLang() {
+	type multilingualError interface {
+		error
+		Langs() []string
+		Translate(lang string)
+	}
+
 	r := "!("
 	_, err := rison.ToJSON([]byte(r), rison.Rison)
-	e, _ := err.(interface {
-		ErrorInLang(lang string) string
-		Langs() []string
-	})
-	fmt.Println(strings.Join(e.Langs(), ", "))
-	fmt.Println(e.ErrorInLang("en"))
-	fmt.Println(e.ErrorInLang("ja"))
+	merr := err.(multilingualError)
+
+	langs := merr.Langs()
+	fmt.Println(strings.Join(langs, ", "))
+
+	fmt.Println(merr.Error())
+	merr.Translate("ja")
+	fmt.Println(merr.Error())
+
 	// Output:
 	// en, ja
 	// unmatched "!(" (at the end of string "!(" -> EOS)
