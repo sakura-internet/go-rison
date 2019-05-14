@@ -1,9 +1,0 @@
-{
-  "Enable": ["vet", "golint", "goimports", "gocyclo"],
-  "Cyclo": 15,
-  "Vendor": true,
-  "Skip": ["vendor", "pb"],
-  "Exclude": [
-    "exported const \\S+ should have comment \\(or a comment on this block\\) or be unexported"
-  ]
-}
