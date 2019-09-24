@@ -6,7 +6,7 @@ jobs:
   build:
     docker:
       # specify the version
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.12
       
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
@@ -22,10 +22,10 @@ jobs:
       - checkout
       - run:
           name: Setup tools
-          command: go get -u github.com/alecthomas/gometalinter && gometalinter --install
+          command: go get github.com/golangci/golangci-lint/cmd/golangci-lint
       - run:
           name: Lint
-          command: gometalinter --config=.gometalinter.json ./...
+          command: golangci-lint run
       - run:
           name: Test
           command: go test -v -coverprofile=/tmp/coverage.out . && go tool cover -html=/tmp/coverage.out -o /tmp/coverage.html
