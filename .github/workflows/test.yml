@@ -13,10 +13,10 @@ jobs:
           go-version: 1.14
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Setup tools
-        run: go get github.com/golangci/golangci-lint/cmd/golangci-lint
-      - name: Lint
-        run: golangci-lint run
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
       - name: Test
         run: go test -v -coverprofile=/tmp/coverage.out . && go tool cover -html=/tmp/coverage.out -o /tmp/coverage.html
       - name: Archive code coverage results
