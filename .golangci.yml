@@ -1,5 +1,0 @@
-linters:
-  enable:
-    - vet
-    - golint
-    - goimports

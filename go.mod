@@ -1,3 +1,3 @@
-module gopkg.in/sakura-internet/go-rison.v3
+module github.com/sakura-internet/go-rison/v4
 
-go 1.12
+go 1.14
