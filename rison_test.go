@@ -259,7 +259,7 @@ func TestDecodeDeepNestedObject(t *testing.T) {
 func TestDecodeDeepNestedArray(t *testing.T) {
 	l := ""
 	r := ""
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 1000; i++ {
 		l += "!(!(),"
 		r += ",!())"
 	}
